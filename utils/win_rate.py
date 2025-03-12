@@ -1,5 +1,5 @@
 import numpy as np
-from database.db import users_collection, bet_history_collection, casino_transactions_collection
+from database.db import users_collection, bet_history_collection
 from models.xgb_model import load_model_from_mongodb
 
 def get_dynamic_win_rate(game_type, base_rate, user_id):
