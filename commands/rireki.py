@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-from database import users_collection
+from database.db import users_collection
 from bot import bot
 from config import BASE_COLOR_CODE
 import datetime

@@ -1,7 +1,7 @@
 import discord
 import re
 from discord import app_commands
-from database import log_transaction, update_user_balance, get_user_balance, users_collection
+from database.db import log_transaction, update_user_balance, get_user_balance, users_collection
 from paypay_session import paypay_session
 from config import MIN_INITIAL_DEPOSIT, PAYPAY_LINK_REGEX
 from bot import bot

@@ -2,7 +2,7 @@ import discord
 import random
 from discord import app_commands
 from bot import bot
-from database import get_user_balance, update_user_balance
+from database.db import get_user_balance, update_user_balance
 from utils import create_embed, send_casino_log
 from config import WIN_EMOJI, LOSE_EMOJI, DRAW_EMOJI
 

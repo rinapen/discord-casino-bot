@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from bot import bot
-from database import get_user_balance, update_user_balance, log_transaction
+from database.db import get_user_balance, update_user_balance, log_transaction
 from config import TAX_RATE, FEE_RATE
 from utils import create_embed
 
