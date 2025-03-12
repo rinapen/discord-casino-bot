@@ -18,7 +18,7 @@ MIN_INITIAL_DEPOSIT = 100  # 初期入金の最低金額
 TAX_RATE = 0.1  # 10% の税金
 FEE_RATE = 0.05  # 5% の手数料
 
-BASE_COLOR_CODE=0x2b2d31
+BASE_COLOR_CODE = 0x2b2d31
 PAYPAY_ICON_URL="https://cdn.discordapp.com/attachments/1338813178674413591/1349042174083207280/unnamed.png?ex=67d1a8ee&is=67d0576e&hm=f3e0c4c9b88a9f68a3f20e35bb4c6236c33e42acea7ee14ab9d9c71257c00a21&"
 PAYPAY_LINK_REGEX = r"^https://pay\.paypay\.ne\.jp/[a-zA-Z0-9]+$"
 
