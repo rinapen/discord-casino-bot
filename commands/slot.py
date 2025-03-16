@@ -70,7 +70,7 @@ async def slot(interaction: discord.Interaction, amount: int):
     emoji = WIN_EMOJI if winnings > 0 else LOSE_EMOJI
 
     # **結果の Embed メッセージ**
-    embed = discord.Embed(title="🎰 スロット結果", color=color)
+    embed = discord.Embed(title="スロット結果", color=color)
     embed.add_field(name="**結果**", value=f"`{result_text}`", inline=False)
     embed.add_field(name="💰 **ベット額**", value=f"`{amount} PNC`", inline=True)
 

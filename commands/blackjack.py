@@ -2,13 +2,13 @@ import discord
 import random
 from discord import app_commands
 from bot import bot
-from database.db import get_user_balance, update_user_balance
+from database.db import get_user_balance, update_user_balance, get_user_streaks, update_user_streak
 from utils.embed import create_embed
 from utils.logs import send_casino_log
-from config import WIN_EMOJI, LOSE_EMOJI, DRAW_EMOJI
+from config import WIN_EMOJI, LOSE_EMOJI, DRAW_EMOJI, CARD_EMOJIS
 
 BASE_COLOR_CODE = 0x2b2d31
-VALID_BETS = [50, 100, 200, 500, 1000]
+VALID_BETS = [100, 500, 1000]
 SUITS = ["S", "C", "D", "H"]
 
 CARD_VALUES = {str(i): i for i in range(2, 11)}
@@ -16,72 +16,124 @@ CARD_VALUES.update({"J": 10, "Q": 10, "K": 10, "A": 11})
 
 games = {}
 
+RESULT_TEXTS = {
+    "win": "勝ちました！（奇跡的）",
+    "lose": "負けました...",
+    "draw": "引き分け（カジノの勝ち）",
+    "bust": "バーストで死亡"
+}
+
 def draw_card():
     """ランダムなカードを引く"""
     rank = random.choice(list(CARD_VALUES.keys()))
     suit = random.choice(SUITS)
-    return (rank, suit, CARD_VALUES[rank])
+    value = CARD_VALUES[rank]
+
+    if rank == "A":
+        emoji = CARD_EMOJIS[suit][0]
+    elif rank.isdigit():
+        emoji = CARD_EMOJIS[suit][int(rank) - 1]
+    else:
+        emoji_index = {"J": 10, "Q": 11, "K": 12}[rank]
+        emoji = CARD_EMOJIS[suit][emoji_index]
+
+    return (emoji, rank, suit, value)
 
 def calculate_hand_value(hand):
     """手札の合計値を計算"""
-    value = sum(card[2] for card in hand)
-    aces = sum(1 for card in hand if card[0] == "A")
+    value = sum(card[3] for card in hand)
+    aces = sum(1 for card in hand if card[1] == "A")
+
     while value > 21 and aces:
         value -= 10
         aces -= 1
+
     return value
 
 class BlackjackGame:
-    def __init__(self, user_id, bet, win_streak, lose_streak):
+    def __init__(self, user_id, bet, win_streak):
         self.user_id = user_id
         self.bet = bet
-        self.win_streak = win_streak
-        self.lose_streak = lose_streak
+        self.win_streak = win_streak  
         self.player_hand = [draw_card(), draw_card()]
         self.dealer_hand = [draw_card(), draw_card()]
         self.finished = False
 
     def hit(self):
-        """プレイヤーがヒットする"""
+        """プレイヤーがヒットする（バースト確率を大幅調整）"""
         if self.finished:
             return None
-        self.player_hand.append(draw_card())
+        
+        player_score = calculate_hand_value(self.player_hand)
+        
+        # **バースト確率の調整**
+        bust_chance = 0.1 * (self.bet // 100) + (self.win_streak * 0.1)
+
+        if player_score >= 14:
+            bust_chance += 0.3
+        if player_score >= 17:
+            bust_chance += 0.5
+        if player_score >= 19:
+            bust_chance += 0.7  
+
+        # **バースト発生**
+        if random.random() < bust_chance:
+            self.player_hand.append(draw_card())
+            self.player_hand.append(draw_card())  # 強制2枚ドロー
+        else:
+            self.player_hand.append(draw_card())
 
         if calculate_hand_value(self.player_hand) > 21:
-            self.finished = True  # バースト
+            self.finished = True  
             return "bust"
+
         return self.player_hand
 
     def dealer_turn(self):
-        """ディーラーのターン（高額ベットほど強化）"""
-        min_hit_score = 18
-        max_stop_score = 20
-
-        # **高額ベットでディーラーの強化**
-        if self.bet >= 500:
-            min_hit_score = 19
-            max_stop_score = 21
-
-        while calculate_hand_value(self.dealer_hand) < min_hit_score:
-            self.dealer_hand.append(draw_card())
-
-        # **ディーラーが20 or 21 で止まりやすくする**
-        if random.random() < 0.6:
-            while calculate_hand_value(self.dealer_hand) < max_stop_score:
-                self.dealer_hand.append(draw_card())
-
-    def get_result(self):
-        """勝敗判定"""
+        """ディーラーのターン（19-21で止まる確率を大幅UP）"""
         player_score = calculate_hand_value(self.player_hand)
         dealer_score = calculate_hand_value(self.dealer_hand)
 
+        while dealer_score < 19:
+            if dealer_score >= 17 and random.random() < 0.9:
+                break  # 90%の確率でスタンド
+            if dealer_score >= 19 and dealer_score <= 21:
+                break  # 19-21なら確定でスタンド
+
+            self.dealer_hand.append(draw_card())
+            dealer_score = calculate_hand_value(self.dealer_hand)
+
+        # **プレイヤーが21の時、40%の確率でディーラーも21**
+        if player_score == 21 and random.random() < 0.4:
+            while dealer_score < 21:
+                self.dealer_hand.append(draw_card())
+                dealer_score = calculate_hand_value(self.dealer_hand)
+
+    def get_result(self):
+        """勝敗判定（プレイヤーがほぼ負ける）"""
+        player_score = calculate_hand_value(self.player_hand)
+        dealer_score = calculate_hand_value(self.dealer_hand)
+
+        print(f"DEBUG: プレイヤーの手札 {self.player_hand} （合計: {player_score}）")
+        print(f"DEBUG: ディーラーの手札 {self.dealer_hand} （合計: {dealer_score}）")
+
         if player_score > 21:
             return "bust"
-        if dealer_score > 21 or player_score > dealer_score:
+        if dealer_score > 21:
             return "win"
-        if player_score < dealer_score:
+
+        if player_score == 21 and dealer_score == 21:
+            return "draw"  
+        if player_score == 21:
+            return "win" if random.random() < 0.25 else "draw"  # 25%勝ち、75%引き分け
+        if dealer_score == 21:
             return "lose"
-        return "draw"
+
+        if player_score > dealer_score:
+            return "win" if random.random() < 0.15 else "lose"  # 15%勝ち、85%負け
+        if player_score == dealer_score:
+            return "draw"
+        return "lose"
 
 @bot.tree.command(name="blackjack", description="ブラックジャックを開始")
 @app_commands.describe(amount="ベット額")
@@ -93,11 +145,9 @@ async def blackjack(interaction: discord.Interaction, amount: int):
         embed = create_embed("❌ 残高不足", f"現在の残高: `{balance:,} PNC`\nベット額を減らしてください。", discord.Color.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-
-    win_streak = 0  # 連勝記録
-    lose_streak = 0  # 連敗記録
-
-    games[user_id] = BlackjackGame(user_id, amount, win_streak, lose_streak)
+    
+    win_streak, lose_streak = get_user_streaks(user_id, "blackjack")
+    games[user_id] = BlackjackGame(user_id, amount, win_streak)
     game = games[user_id]
 
     embed = create_blackjack_embed(game, False, BASE_COLOR_CODE)
@@ -105,16 +155,17 @@ async def blackjack(interaction: discord.Interaction, amount: int):
 
 def create_blackjack_embed(game, reveal_dealer, color, result=None, payout=None, balance=None):
     """ブラックジャックの手札をEmbedで表示"""
-    player_hand = " | ".join(f"{card[0]}{card[1]}" for card in game.player_hand)
-    dealer_hand = " | ".join(f"{card[0]}{card[1]}" for card in game.dealer_hand) if reveal_dealer else f"{game.dealer_hand[0][0]}{game.dealer_hand[0][1]} ❓"
+    player_hand = " ".join(f"{card[0]}" for card in game.player_hand)
+    dealer_hand = " ".join(f"{card[0]}" for card in game.dealer_hand) if reveal_dealer else f"{game.dealer_hand[0][0]} <:ura:1349085492448071700>"
+    dealer_value = calculate_hand_value(game.dealer_hand) if reveal_dealer else "??"
 
     embed = discord.Embed(title="ブラックジャック", color=color)
     embed.add_field(name="**ベット額**", value=f"`{game.bet} PNC`", inline=False)
     embed.add_field(name="**プレイヤーの手札**", value=f"{player_hand} （合計: `{calculate_hand_value(game.player_hand)}`）", inline=False)
-    embed.add_field(name="**ディーラーの手札**", value=f"{dealer_hand}", inline=False)
+    embed.add_field(name="**ディーラーの手札**", value=f"{dealer_hand} （合計: `{dealer_value}`）", inline=False)
 
     if result:
-        embed.add_field(name="**結果**", value=f"`{result}`", inline=False)
+        embed.add_field(name="**結果**", value=f"`{RESULT_TEXTS[result]}`", inline=False)
         if payout is not None:
             if payout > 0:
                 embed.add_field(name="✅ **獲得**", value=f"`{payout} PNC`", inline=False)
@@ -136,30 +187,108 @@ class BlackjackView(discord.ui.View):
         await interaction.response.defer()
         user_id = interaction.user.id
         game = games.get(user_id)
-        if game is None:
+
+        # **不正防止**
+        if game is None or game.user_id != user_id:
+            await interaction.followup.send("❌ **このゲームの参加者ではありません。**", ephemeral=True)
             return
-        
-        if game.hit() == "bust":
-            update_user_balance(user_id, -game.bet)
-            balance = get_user_balance(user_id)
-            await interaction.message.edit(embed=create_blackjack_embed(game, True, discord.Color.red(), result="bust", payout=-game.bet, balance=balance), view=None)
+
+        print(f"DEBUG: {user_id} がヒットボタンを押しました")
+
+        result = game.hit()
+
+        # **バースト処理**
+        if result == "bust":
+            payout = -game.bet
+            emoji = LOSE_EMOJI
+            color = discord.Color.red()
+            await end_blackjack_game(interaction, game, "bust", payout, color, emoji)
+            return
+
+        # **手札が21になったら自動的に判定**
+        player_score = calculate_hand_value(game.player_hand)
+
+        if player_score == 21:
+            game.finished = True
+            game.dealer_turn()
+            dealer_score = calculate_hand_value(game.dealer_hand)
+
+            # **ディーラーも21なら 70% の確率で引き分け**
+            if dealer_score == 21:
+                result = "draw" if random.random() < 0.7 else "lose"
+            elif dealer_score >= 19:
+                result = "lose"  # **ディーラーが 19 以上なら負け**
+            else:
+                result = "win"
+
+            # **支払い処理**
+            if result == "draw":
+                payout = 0
+                emoji = DRAW_EMOJI
+                color = discord.Color.light_gray()
+            elif result == "win":
+                payout = game.bet * 2
+                update_user_balance(user_id, payout)
+                emoji = WIN_EMOJI
+                color = discord.Color.green()
+            else:
+                payout = -game.bet
+                update_user_balance(user_id, payout)
+                emoji = LOSE_EMOJI
+                color = discord.Color.red()
+
+            await end_blackjack_game(interaction, game, result, payout, color, emoji)
         else:
+            print(f"DEBUG: {user_id} の新しい手札 {game.player_hand}")  
             await interaction.message.edit(embed=create_blackjack_embed(game, False, BASE_COLOR_CODE))
+
 
     @discord.ui.button(label="決定", style=discord.ButtonStyle.red)
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         user_id = interaction.user.id
         game = games.get(user_id)
-        if game is None:
+
+        # **不正防止：他のユーザーがボタンを押せないようにする**
+        if game is None or game.user_id != user_id:
+            await interaction.followup.send("❌ **このゲームの参加者ではありません。**", ephemeral=True)
             return
 
         game.dealer_turn()
         game.finished = True
         result = game.get_result()
 
-        payout = game.bet * (2 if result == "win" else -1)
-        update_user_balance(user_id, payout)
-        balance = get_user_balance(user_id)
+        if result == "draw":
+            payout = 0
+            emoji = DRAW_EMOJI
+            color = discord.Color.light_gray()
+        elif result == "win":
+            payout = game.bet * 2
+            update_user_balance(user_id, payout)
+            emoji = WIN_EMOJI
+            color = discord.Color.green()
+        else:
+            payout = -game.bet
+            update_user_balance(user_id, payout)
+            emoji = LOSE_EMOJI
+            color = discord.Color.red()
 
-        await interaction.message.edit(embed=create_blackjack_embed(game, True, discord.Color.green() if payout > 0 else discord.Color.red(), result=result, payout=payout, balance=balance), view=None)
+        # **ゲーム終了処理**
+        await end_blackjack_game(interaction, game, result, payout, color, emoji)
+
+async def end_blackjack_game(interaction, game, result, payout, color, emoji):
+    user_id = game.user_id
+
+    # ✅ **勝敗データを更新**
+    if result == "win":
+        update_user_streak(user_id, "blackjack", True)  # 連勝更新
+    elif result == "lose" or result == "bust":
+        update_user_streak(user_id, "blackjack", False)  # 連敗更新
+
+    balance = get_user_balance(user_id)
+    await send_casino_log(interaction, emoji, abs(payout), "", color)
+
+    await interaction.message.edit(
+        embed=create_blackjack_embed(game, True, color, result=result, payout=payout, balance=balance),
+        view=None
+    )

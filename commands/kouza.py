@@ -27,7 +27,7 @@ class RegisterModal(discord.ui.Modal, title="口座開設"):
 
     async def on_submit(self, interaction: discord.Interaction):
         user_id = interaction.user.id
-        user = interaction.user
+        discord_user = interaction.user
         await interaction.response.defer(ephemeral=True)
 
         if users_collection.find_one({"user_id": user_id}):
@@ -72,4 +72,4 @@ class RegisterModal(discord.ui.Modal, title="口座開設"):
         # embed.add_field(name="支払い状況", value=f"{deposit_info.status}")
         embed.set_footer(text=f"{deposit_info.sender_name} 様", icon_url=deposit_info.sender_icon)
         await interaction.followup.send(embed=embed, ephemeral=True)
-        await send_paypay_log(user, amount, fee, net_amount, is_register=True)
+        await send_paypay_log(discord_user, amount, fee, net_amount, is_register=True)

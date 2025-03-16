@@ -1,97 +1,122 @@
 import discord
+from discord import app_commands
+from discord.ext import tasks, commands
 import config
 import datetime
+from datetime import timedelta
 import os
 import pytz
 import matplotlib.pyplot as plt
-from discord.ext import tasks
 from bot import bot
-from database.db import user_transactions_collection, users_collection
 from utils.pnc import get_total_pnc, get_daily_profit, get_monthly_revenue
-import commands
+import asyncio
+
 
 JST = pytz.timezone("Asia/Tokyo")
 
-async def send_daily_report():
-    """Send the daily revenue report to the admin channel at 00:00 JST"""
+@tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=JST))  # ⏰ **毎日 0:00 JST に実行**
+async def daily_report_task():
+    """⏳ 自動的に毎日 0:00 JST にレポートを送信"""
+    await send_daily_report()
 
-    now = datetime.datetime.now(JST)
-    today = now.strftime("%Y-%m-%d")
 
-    daily_profit = get_daily_profit(today)
+async def send_daily_report(target_date: str = None):
+    """📝 指定した日のカジノ収益レポートを送信（デフォルトは昨日）"""
+
+    # **日付のデフォルト値（昨日）**
+    if target_date is None:
+        now = datetime.datetime.now(JST)
+        target_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # **利益計算**
+    daily_profit = get_daily_profit(target_date)
     total_pnc = get_total_pnc()
     monthly_revenue = get_monthly_revenue()
 
-    image_path = create_profit_graph(today)
+    # **利益率計算（PNCが0のときは0.0%）**
+    profit_rate = (daily_profit / total_pnc * 100) if total_pnc > 0 else 0.0
 
     channel = bot.get_channel(int(config.ADMIN_CHANNEL_ID))
     if channel:
         embed = discord.Embed(
-            title="本日のカジノレポート",
-            description=f"**{today}** のカジノ収益レポート",
+            title="💰 カジノ収益レポート",
+            description=f"**{target_date} のカジノ利益状況**",
             color=discord.Color.gold()
         )
-        embed.add_field(name="本日の利益", value=f"`{daily_profit:,} PNC`", inline=False)
-        embed.add_field(name="1ヶ月の総収益", value=f"`{monthly_revenue:,} PNC`", inline=False)
-        embed.add_field(name="全ユーザー保有PNC", value=f"`{total_pnc:,} PNC`", inline=False)
-        embed.set_footer(text="自動送信 - 日次カジノレポート")
+        embed.add_field(name="📈 本日の利益", value=f"`{daily_profit:,} 円`", inline=False)
+        embed.add_field(name="📊 利益率", value=f"`{profit_rate:.2f}%`", inline=False)
+        embed.add_field(name="📅 1ヶ月の総収益", value=f"`{monthly_revenue:,} 円`", inline=False)
+        embed.add_field(name="💳 全ユーザー保有PNC", value=f"`{total_pnc:,} PNC`", inline=False)
+        embed.set_footer(text="⏳ 自動送信 - カジノレポート")
 
         await channel.send(embed=embed)
 
-        await channel.send(file=discord.File(image_path))
 
-@tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=JST))
-async def daily_report_task():
-    """Automatically sends the daily casino report at 00:00 JST"""
-    await send_daily_report()
+@bot.tree.command(name="daily_report", description="📊 指定した日のカジノ収益レポートを送信")
+@app_commands.describe(target_date="YYYY-MM-DD の形式で日付を入力してください")
+async def manual_daily_report(interaction: discord.Interaction, target_date: str):
+    """📌 指定した日付のカジノレポートを手動送信"""
 
-def get_daily_profit(date):
-    """Calculate net profit for a given date (income - expenses)"""
-    transactions = user_transactions_collection.find({"timestamp": {"$regex": f"^{date}"}})
+    try:
+        datetime.datetime.strptime(target_date, "%Y-%m-%d")
+    except ValueError:
+        await interaction.response.send_message(
+            "❌ **日付の形式が正しくありません！**\n`YYYY-MM-DD` の形式で入力してください。",
+            ephemeral=True
+        )
+        return
 
-    total_income = sum(txn["amount"] for txn in transactions if txn["type"] == "income")
-    total_expense = sum(txn["amount"] for txn in transactions if txn["type"] == "expense")
+    await interaction.response.send_message(f"📤 **{target_date} のレポートを送信中...**", ephemeral=True)
+    await send_daily_report(target_date)
+    await interaction.followup.send(f"✅ **{target_date} のカジノレポートを送信しました！**", ephemeral=True)
 
-    return total_income - total_expense
-
-def get_total_pnc():
-    """Retrieve the total PNC balance across all users"""
-    total = list(users_collection.aggregate([
-        {"$group": {"_id": None, "total_pnc": {"$sum": "$balance"}}}
-    ]))
-
-    return total[0]["total_pnc"] if total else 0
-
-def create_profit_graph(today):
-    """Generate and save a profit graph for the past 30 days, organized in a daily folder."""
+def create_profit_graph(target_date):
+    """📈 指定した日の利益グラフを作成し保存"""
     REPORTS_DIR = "reports"
-    daily_report_dir = os.path.join(REPORTS_DIR, today)
-    os.makedirs(daily_report_dir, exist_ok=True)
+    os.makedirs(REPORTS_DIR, exist_ok=True)
 
-    dates = [(datetime.datetime.now(JST) - datetime.timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)]
+    dates = [(datetime.datetime.now(JST) - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)]
     profits = [get_daily_profit(date) for date in dates]
 
     plt.figure(figsize=(10, 5))
     plt.plot(dates, profits, marker='o', linestyle='-', color='green')
-    plt.xlabel("Date")
-    plt.ylabel("Profit (pnc)")
-    plt.title(f"Casino Profit Trends ({today})") 
+    plt.xlabel("📆 日付")
+    plt.ylabel("💰 利益 (PNC)")
+    plt.title(f"📊 カジノ利益推移 ({target_date})")
     plt.xticks(rotation=45)
     plt.grid()
 
-    image_path = os.path.join(daily_report_dir, "daily_profit.png")
+    image_path = os.path.join(REPORTS_DIR, f"{target_date}_profit.png")
     plt.savefig(image_path, bbox_inches="tight")
     plt.close()
 
     return image_path
 
+
+async def keep_alive():
+    """🔄 ボットの接続状態を監視"""
+    while True:
+        await bot.wait_until_ready()
+        print(f"✅ WebSocket is stable: {round(bot.latency * 1000)}ms")
+        await asyncio.sleep(300)  # **5分ごとに監視**
+
+
 @bot.event
 async def on_ready():
-    """Start daily report tasks when bot is online"""
+    """🔵 ボット起動時にタスクを開始"""
     await bot.tree.sync()
-    print(f"Logged in as {bot.user}")
+    print(f"🟢 Logged in as {bot.user}")
 
+    # **タスクがすでに起動していなければ開始**
     if not daily_report_task.is_running():
         daily_report_task.start()
 
-bot.run(config.TOKEN)
+
+async def main():
+    """🔄 メイン関数（非同期起動）"""
+    asyncio.create_task(keep_alive())  # ✅ `create_task()` を `async` 関数内で実行
+    await bot.start(config.TOKEN)  # ✅ `bot.run()` を `await bot.start()` に変更
+
+# **Python スクリプトのエントリーポイント**
+if __name__ == "__main__":
+    asyncio.run(main())  # ✅ `asyncio.run()` を使用して `main()` を起動
