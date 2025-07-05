@@ -1,38 +1,51 @@
-import discord
-from discord import app_commands
-from discord.ext import tasks, commands
-import config
+import asyncio
 import datetime
 from datetime import timedelta
 import os
-import pytz
+import random
+
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
 import matplotlib.pyplot as plt
+from matplotlib import font_manager as fm
+import pytz
+
 from bot import bot
-from utils.pnc import get_total_pnc, get_daily_profit, get_monthly_revenue
-import asyncio
-import commands
-from commands.account import AccountView
+from commands import register_all_text_commands
+from config import GUILD_ID
+import config
+from paypay_session import paypay_session
+from tasks.usage_ranking import send_monthly_usage_ranking, send_or_update_ranking
+from utils.account_panel import setup_account_panel
+from utils.invite_panel import check_invite_usage_diff, initialize_invite_cache, setup_invite_panel
+from utils.pnc import get_daily_profit, get_total_pnc, get_total_revenue
+
 JST = pytz.timezone("Asia/Tokyo")
 
-@tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=JST)) 
+@tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=JST))
 async def daily_report_task():
-    """⏳ 自動的に毎日 0:00 JST にレポートを送信"""
     await send_daily_report()
 
+@tasks.loop(seconds=60)
+async def invite_monitor_loop():
+    guild = bot.get_guild(GUILD_ID)
+    if guild:
+        try:
+            await check_invite_usage_diff(guild)
+            print("✅ Invite usage diff checked")
+        except Exception as e:
+            print(f"❌ Error during invite diff check: {e}")
 
 async def send_daily_report(target_date: str = None):
-    """📝 指定した日のカジノ収益レポートを送信（デフォルトは昨日）"""
-
     if target_date is None:
         now = datetime.datetime.now(JST)
         target_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
-    # **利益計算**
     daily_profit = get_daily_profit(target_date)
     total_pnc = get_total_pnc()
-    monthly_revenue = get_monthly_revenue()
+    monthly_revenue = get_total_revenue()
 
-    # **利益率計算（PNCが0のときは0.0%）**
     profit_rate = (daily_profit / total_pnc * 100) if total_pnc > 0 else 0.0
 
     channel = bot.get_channel(int(config.ADMIN_CHANNEL_ID))
@@ -44,59 +57,108 @@ async def send_daily_report(target_date: str = None):
         )
         embed.add_field(name="📈 本日の利益", value=f"`{daily_profit:,} 円`", inline=False)
         embed.add_field(name="📊 利益率", value=f"`{profit_rate:.2f}%`", inline=False)
-        embed.add_field(name="📅 1ヶ月の総収益", value=f"`{monthly_revenue:,} 円`", inline=False)
+        embed.add_field(name="📅 総収益", value=f"`{monthly_revenue:,} 円`", inline=False)
         embed.add_field(name="💳 全ユーザー保有PNC", value=f"`{total_pnc:,} PNC`", inline=False)
         embed.set_footer(text="⏳ 自動送信 - カジノレポート")
 
         await channel.send(embed=embed)
 
-def create_profit_graph(target_date):
-    """📈 指定した日の利益グラフを作成し保存"""
+        graph_path = create_monthly_profit_graph()
+        file = discord.File(graph_path, filename="monthly_profit.png")
+        graph_embed = discord.Embed(
+            title="📊 直近30日間のカジノ利益推移",
+            color=discord.Color.blurple()
+        )
+        graph_embed.set_image(url="attachment://monthly_profit.png")
+        await channel.send(embed=graph_embed, file=file)
+
+def create_monthly_profit_graph():
     REPORTS_DIR = "reports"
     os.makedirs(REPORTS_DIR, exist_ok=True)
 
-    dates = [(datetime.datetime.now(JST) - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)]
+    font_path = "assets/font/NotoSansJP-VariableFont_wght.ttf"
+    jp_font = fm.FontProperties(fname=font_path)
+
+    JST = datetime.datetime.now().astimezone().tzinfo
+    today = datetime.datetime.now(JST)
+    dates = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(29, -1, -1)]
     profits = [get_daily_profit(date) for date in dates]
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(dates, profits, marker='o', linestyle='-', color='green')
-    plt.xlabel("📆 日付")
-    plt.ylabel("💰 利益 (PNC)")
-    plt.title(f"📊 カジノ利益推移 ({target_date})")
-    plt.xticks(rotation=45)
-    plt.grid()
+    plt.figure(figsize=(12, 6))
+    plt.plot(dates, profits, marker='o', linestyle='-', color='blue')
 
-    image_path = os.path.join(REPORTS_DIR, f"{target_date}_profit.png")
+    plt.title("📊 過去30日間のカジノ収益推移", fontproperties=jp_font)
+    plt.xlabel("日付", fontproperties=jp_font)
+    plt.ylabel("利益（円）", fontproperties=jp_font)
+    plt.xticks(rotation=45, fontproperties=jp_font)
+    plt.yticks(fontproperties=jp_font)
+    plt.grid(True)
+
+    for i, profit in enumerate(profits):
+        plt.annotate(f"{profit:,}", (dates[i], profits[i]),
+                     textcoords="offset points", xytext=(0, 8), ha='center', fontsize=8, fontproperties=jp_font)
+
+    plt.tight_layout()
+    image_path = os.path.join(REPORTS_DIR, "monthly_profit.png")
     plt.savefig(image_path, bbox_inches="tight")
     plt.close()
-
     return image_path
 
-
 async def keep_alive():
-    """🔄 ボットの接続状態を監視"""
     while True:
         await bot.wait_until_ready()
         print(f"✅ WebSocket is stable: {round(bot.latency * 1000)}ms")
-        await asyncio.sleep(300)  # **5分ごとに監視**
-
+        try:
+            paypay_session.paypay.alive()
+        except Exception as e:
+            print(f"[ERROR] keep_alive error: {e}")
+        sleep_time = random.randint(240, 420)
+        await asyncio.sleep(sleep_time)
 
 @bot.event
 async def on_ready():
-    """🔵 ボット起動時にタスクを開始"""
+    print("[DEBUG] on_ready 実行開始")
     await bot.tree.sync()
-    bot.add_view(AccountView()) 
     print(f"🟢 Logged in as {bot.user}")
 
-    # **タスクがすでに起動していなければ開始**
+    for guild in bot.guilds:
+        if guild.id == GUILD_ID:
+            try:
+                await initialize_invite_cache(guild)
+                print(f"✅ Initialized invite cache for {guild.name}")
+            except Exception as e:
+                print(f"❌ Failed to initialize invites for {guild.name}: {e}")
+
+    await setup_account_panel()
+    # await setup_invite_panel(bot)
+
     if not daily_report_task.is_running():
         daily_report_task.start()
 
+    if not invite_monitor_loop.is_running():
+        invite_monitor_loop.start()
+
+    if not send_monthly_usage_ranking.is_running():
+        send_monthly_usage_ranking.start()
+
+    await send_or_update_ranking()
+    try:
+        await send_daily_report()
+    except Exception as e:
+        print(f"[ERROR] 起動時レポート送信エラー: {e}")
+        error_embed = discord.Embed(
+            title="⚠️ レポート送信エラー",
+            description=f"Bot起動時にカジノ収益レポートの送信に失敗しました。\n`{type(e).__name__}: {str(e)}`",
+            color=discord.Color.red()
+        )
+        error_channel = bot.get_channel(int(config.ADMIN_CHANNEL_ID))
+        if error_channel:
+            await error_channel.send(embed=error_embed)
 
 async def main():
-    """🔄 メイン関数（非同期起動）"""
-    asyncio.create_task(keep_alive())  # ✅ `create_task()` を `async` 関数内で実行
-    await bot.start(config.TOKEN)  # ✅ `bot.run()` を `await bot.start()` に変更
+    asyncio.create_task(keep_alive())
+    await register_all_text_commands(bot)
+    await bot.start(config.TOKEN)
 
 if __name__ == "__main__":
     try:
