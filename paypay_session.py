@@ -24,13 +24,13 @@ class PayPaySession:
             try:
                 if "refresh_token" in self.tokens:
                     print("[INFO] Trying refresh_token login")
-                    self.paypay = PayPay(PAYPAY_PHONE, PAYPAY_PASSWORD)
                     self.paypay.token_refresh(self.tokens["refresh_token"])
                     save_tokens(
                         self.paypay.access_token,
                         self.paypay.refresh_token,
                         self.paypay.device_uuid
                     )
+                    self.paypay = PayPay(access_token=self.tokens["access_token"])
                     login_successful = True
             except Exception as e:
                 print(f"[WARN] refresh_token failed: {e}")
@@ -60,7 +60,7 @@ class PayPaySession:
                 print(f"[ERROR] Manual login failed: {e}")
                 raise e
 
-    def send_money(self, amount, receiver_id):
+    def send_money(self, amount: int, receiver_id: str):
         return self.paypay.send_money(amount=amount, receiver_id=receiver_id)
 
 paypay_session = PayPaySession()
