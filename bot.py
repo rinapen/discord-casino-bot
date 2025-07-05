@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.messages = True
 intents.guilds = True
 intents.members = True
