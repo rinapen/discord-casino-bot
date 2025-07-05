@@ -1,10 +1,10 @@
 import discord
 import random
-from utils.emojis import PNC_EMOJI_STR, WIN_EMOJI
-from database.db import get_user_balance, update_user_balance
-from utils.logs import send_casino_log
-from utils.embed import create_embed
+from database.db import get_user_balance
+
+from utils.emojis import PNC_EMOJI_STR
 from utils.embed_factory import EmbedFactory
+
 from ui.game.flip import CoinFlipView
 
 from config import THUMBNAIL_URL, FLIP_GIF_URL
