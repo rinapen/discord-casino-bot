@@ -15,12 +15,11 @@ MINE_EMOJI_TEXT = "💣"
 # DIAMOND_EMOJI = discord.PartialEmoji(name="003", id=1390462973398618112)
 # MINE_EMOJI = discord.PartialEmoji(name="015", id=1390462998883336345)
 
-
 DICE_EMOJI = discord.PartialEmoji(name="saikoro", id=1389849869614579802)
 
 GRAD_FACE = discord.PartialEmoji(name="027", id=1390463028117635173)
 GERO_FACE = discord.PartialEmoji(name="038", id=1390463056433254571)
 
-WIN_EMOJI = os.getenv("WIN_EMOJI")
-LOSE_EMOJI = os.getenv("LOSE_EMOJI")
-DRAW_EMOJI = os.getenv("DRAW_EMOJI")
+WIN_EMOJI="<:up_mark:1347908646633209947>"
+LOSE_EMOJI="<:down_mark:1347908644897034320>"
+DRAW_EMOJI="<:draw:1349449575370592336>"
