@@ -21,6 +21,7 @@ from utils.embed import create_embed
 from utils.emojis import PNC_EMOJI_STR
 from utils.logs import send_paypay_log, log_transaction
 from utils.pnc import jpy_to_pnc, pnc_to_jpy, generate_random_amount
+from utils.embed_factory import EmbedFactory
 
 pending_amounts = {}
 pending_tasks = {}
@@ -193,7 +194,8 @@ class PayinModal(discord.ui.Modal, title="入金"):
 
         existing = users_collection.find_one({"user_id": user_id})
         if not existing:
-            embed = create_embed("", "あなたの口座が見つかりません。\n `/kouza` で口座を開設してください。", discord.Color.red())
+            
+            embed = EmbedFactory.not_registered()
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
