@@ -16,15 +16,17 @@ from database.db import user_transactions_collection
 from bot import bot
 from utils.bot_state import save_last_message_id_to_db, get_last_message_id_from_db
 from utils.emojis import PNC_EMOJI_STR
-from config import RANKING_CHANNEL_ID
+from config import RANKING_CHANNEL_ID, EXCLUDED_USER_IDS, ADMIN_USER_ID
 
 # ========================================
 # 定数
 # ========================================
 JST = pytz.timezone("Asia/Tokyo")
 STORAGE_PATH = "last_monthly_ranking.json"
-EXCLUDED_USER_ID = 1154344959646908449
-TARGET_USER_ID = 1154344959646908449
+
+# 除外ユーザーID（レガシー - configから取得）
+EXCLUDED_USER_ID = EXCLUDED_USER_IDS[0] if EXCLUDED_USER_IDS else None
+TARGET_USER_ID = ADMIN_USER_ID
 
 
 # ========================================
@@ -63,8 +65,9 @@ async def send_or_update_ranking() -> None:
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end = now
 
-        excluded_user_id = 1154344959646908449
-        target_user_id = 1154344959646908449
+        # 除外ユーザーIDをconfigから取得
+        excluded_user_id = EXCLUDED_USER_ID
+        target_user_id = TARGET_USER_ID
         target_payin_total = 0
 
         total_payin = 0  # 全体Payin合計

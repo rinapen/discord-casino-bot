@@ -21,7 +21,9 @@ from bot import bot
 # ========================================
 JPY_PER_PNC: Final[Decimal] = Decimal("0.1")
 JST: Final = pytz.timezone("Asia/Tokyo")
-EXCLUDED_USER_IDS: Final[list[int]] = [1135891552045121557, 1154344959646908449, 1324832394079109301]
+
+# 除外ユーザーIDをconfigから取得
+from config import EXCLUDED_USER_IDS
 
 
 # ========================================

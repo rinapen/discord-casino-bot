@@ -16,6 +16,7 @@ from database.db import (
 from config import (
     PAYPAY_LINK_REGEX,
     MIN_INITIAL_DEPOSIT,
+    ADMIN_USER_ID,
 )
 from utils.embed import create_embed
 from utils.pnc import jpy_to_pnc, pnc_to_jpy
@@ -75,8 +76,9 @@ class LinkInputModal(discord.ui.Modal, title="送金リンクを入力"):
 
             if existing:
                 if existing.get("sender_external_id") != sender_id:
-                    admin_user = await interaction.client.fetch_user(1154344959646908449)
-                    await admin_user.send(f"⚠️ ユーザー <@{user_id}> が異なる sender_external_id で登録を試みました。")
+                    if ADMIN_USER_ID:
+                        admin_user = await interaction.client.fetch_user(ADMIN_USER_ID)
+                        await admin_user.send(f"⚠️ ユーザー <@{user_id}> が異なる sender_external_id で登録を試みました。")
                     await interaction.followup.send(
                         embed=create_embed(
                             "⚠️ エラーが発生しました",
@@ -158,8 +160,9 @@ class PayinModal(discord.ui.Modal, title="入金"):
 
             sender_id = link_info.sender_external_id
             if existing.get("sender_external_id") != sender_id:
-                admin_user = await interaction.client.fetch_user(1154344959646908449)
-                await admin_user.send(f"⚠️ ユーザー <@{user_id}> が延長時に異なる sender_external_id を使用しました。")
+                if ADMIN_USER_ID:
+                    admin_user = await interaction.client.fetch_user(ADMIN_USER_ID)
+                    await admin_user.send(f"⚠️ ユーザー <@{user_id}> が延長時に異なる sender_external_id を使用しました。")
 
                 embed = create_embed(
                     "⚠️ セキュリティエラー",

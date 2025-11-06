@@ -52,10 +52,10 @@ DICE_FOLDER: Final[str] = "assets/dice"
 # ========================================
 # Discord設定
 # ========================================
-GUILD_ID: Final[int] = 1379480185380012053
-ACCOUNT_CHANNEL_ID: Final[int] = 1379480186164088905
-INVITE_PANEL_CHANNEL_ID: Final[int] = 1390239917153583104
-HITANDBLOW_CATEGORY_ID: Final[int] = 1393793733492998206
+GUILD_ID: Final[int] = int(os.getenv("GUILD_ID", "0"))
+ACCOUNT_CHANNEL_ID: Final[int] = int(os.getenv("ACCOUNT_CHANNEL_ID", "0"))
+INVITE_PANEL_CHANNEL_ID: Final[int] = int(os.getenv("INVITE_PANEL_CHANNEL_ID", "0"))
+HITANDBLOW_CATEGORY_ID: Final[int] = int(os.getenv("HITANDBLOW_CATEGORY_ID", "0"))
 
 # ========================================
 # アセットURL
@@ -96,11 +96,31 @@ CARD_EMOJIS: Final[dict[str, list[str]]] = {
 }
 
 # ========================================
+# 環境モード設定
+# ========================================
+ENVIRONMENT: Final[str] = os.getenv("ENVIRONMENT", "test")  # "test" or "production"
+IS_TEST_MODE: Final[bool] = ENVIRONMENT.lower() == "test"
+IS_PRODUCTION_MODE: Final[bool] = ENVIRONMENT.lower() == "production"
+
+# ========================================
 # 認証情報（環境変数から取得）
 # ========================================
 TOKEN: Final[str | None] = os.getenv("DISCORD_BOT_TOKEN")
-PAYPAY_PHONE: Final[str | None] = os.getenv("PAYPAY_PHONE")
-PAYPAY_PASSWORD: Final[str | None] = os.getenv("PAYPAY_PASSWORD")
+
+# PayPay設定（本番環境のみ使用）
+PAYPAY_PHONE_NUMBER: Final[str | None] = os.getenv("PAYPAY_PHONE_NUMBER") if IS_PRODUCTION_MODE else None
+PAYPAY_PIN: Final[str | None] = os.getenv("PAYPAY_PIN") if IS_PRODUCTION_MODE else None
+
+# ========================================
+# 管理者・除外ユーザーID
+# ========================================
+ADMIN_USER_ID: Final[int | None] = int(os.getenv("ADMIN_USER_ID")) if os.getenv("ADMIN_USER_ID") else None
+
+# 統計から除外するユーザーID（カンマ区切り）
+EXCLUDED_USER_IDS_STR: Final[str] = os.getenv("EXCLUDED_USER_IDS", "")
+EXCLUDED_USER_IDS: Final[list[int]] = [
+    int(uid.strip()) for uid in EXCLUDED_USER_IDS_STR.split(",") if uid.strip()
+] if EXCLUDED_USER_IDS_STR else []
 
 # ========================================
 # ログチャンネルID（環境変数から取得）

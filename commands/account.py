@@ -1,13 +1,19 @@
+"""
+アカウント管理コマンド
+ユーザー登録と入金処理を管理します
+"""
 import re
 import traceback
 from decimal import Decimal, ROUND_HALF_UP
 
 import discord
 
-from PayPaython_mobile.main import PayPayError
 from config import (
     PAYPAY_LINK_REGEX,
     MIN_INITIAL_DEPOSIT,
+    IS_TEST_MODE,
+    IS_PRODUCTION_MODE,
+    ADMIN_USER_ID,
 )
 from database.db import (
     update_user_balance,
@@ -23,6 +29,14 @@ from utils.emojis import PNC_EMOJI_STR
 from utils.logs import send_paypay_log, log_transaction
 from utils.pnc import jpy_to_pnc, pnc_to_jpy, generate_random_amount
 from utils.embed_factory import EmbedFactory
+
+# 本番環境の場合のみPayPayエラーをインポート
+if IS_PRODUCTION_MODE:
+    from PayPaython_mobile.main import PayPayError
+else:
+    # テストモード用のダミーエラークラス
+    class PayPayError(Exception):
+        pass
 
 pending_amounts = {}
 pending_tasks = {}
@@ -80,29 +94,103 @@ class LinkSubmitView(discord.ui.View):
             expected_amount=self.expected_amount
         ))
 
-class LinkInputModal(discord.ui.Modal, title="送金リンクを入力"):
+class LinkInputModal(discord.ui.Modal):
+    """登録時のリンク/金額入力モーダル（テスト/本番で切り替え）"""
+    
     def __init__(self, user_id: int, expected_amount: Decimal):
-        super().__init__()
+        # テストモードと本番モードでタイトルを変更
+        title = "金額確認（テストモード）" if IS_TEST_MODE else "送金リンクを入力"
+        super().__init__(title=title)
+        
         self.user_id = user_id
         self.expected_amount = expected_amount
-        self.link_input = discord.ui.TextInput(
-            label="PayPayリンク",
-            placeholder="https://paypay.ne.jp/...",
-            required=True
-        )
-        self.add_item(self.link_input)
+        
+        if IS_TEST_MODE:
+            # テストモード: 金額を表示して確認
+            self.confirm_input = discord.ui.TextInput(
+                label=f"入金額: {expected_amount}円",
+                placeholder=f"{expected_amount} と入力して確認",
+                required=True,
+                max_length=10
+            )
+            self.add_item(self.confirm_input)
+        else:
+            # 本番モード: PayPayリンクを入力
+            self.link_input = discord.ui.TextInput(
+                label="PayPayリンク",
+                placeholder="https://paypay.ne.jp/...",
+                required=True
+            )
+            self.add_item(self.link_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         user_id = self.user_id
         expected_amount = self.expected_amount
-        paypay_link = self.link_input.value.strip()
         await interaction.response.defer(ephemeral=True)
+
+        # テストモードと本番モードで処理を分岐
+        if IS_TEST_MODE:
+            await self._handle_test_mode_registration(interaction, user_id, expected_amount)
+        else:
+            await self._handle_production_mode_registration(interaction, user_id, expected_amount)
+
+    async def _handle_test_mode_registration(self, interaction: discord.Interaction, user_id: int, expected_amount: Decimal):
+        """テストモードの登録処理"""
+        # 金額確認
+        try:
+            confirmed_amount = Decimal(self.confirm_input.value.strip())
+            if confirmed_amount != expected_amount:
+                await interaction.followup.send(
+                    embed=create_embed(
+                        "金額不一致",
+                        f"指定された金額 **{expected_amount}**円 を入力してください。",
+                        discord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                return
+        except (ValueError, AttributeError):
+            await interaction.followup.send(
+                embed=create_embed(
+                    "無効な入力",
+                    f"正しい金額 **{expected_amount}** を入力してください。",
+                    discord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return
+
+        # テストモード用のダミーsender_id
+        sender_id = f"test_user_{user_id}"
+        
+        existing = users_collection.find_one({"user_id": user_id})
+
+        if existing:
+            await interaction.followup.send(
+                embed=create_embed("認証成功（テストモード）", "送信者情報が一致しました。", discord.Color.green()),
+                ephemeral=True
+            )
+        else:
+            active_data = active_users_collection.find_one({"user_id": user_id})
+            restored_balance = int(active_data["balance"]) if active_data and "balance" in active_data else 0
+
+            register_user(user_id, sender_id)
+            update_user_balance(user_id, restored_balance)
+
+            await interaction.followup.send(
+                embed=create_embed("登録完了（テストモード）", "登録が正常に完了しました。\n※ 実際の金銭取引は発生していません", discord.Color.green()),
+                ephemeral=True
+            )
+
+    async def _handle_production_mode_registration(self, interaction: discord.Interaction, user_id: int, expected_amount: Decimal):
+        """本番モードの登録処理（PayPayリンク使用）"""
+        paypay_link = self.link_input.value.strip()
 
         link_match = re.search(PAYPAY_LINK_REGEX, paypay_link)
         if not link_match:
             await interaction.followup.send(
                 embed=create_embed(
-                    "❌ 無効なリンク",
+                    "無効なリンク",
                     "正しいPayPayリンクを入力してください。\n例: https://paypay.ne.jp/...",
                     discord.Color.red()
                 ),
@@ -119,7 +207,7 @@ class LinkInputModal(discord.ui.Modal, title="送金リンクを入力"):
             if jpy_amount != expected_amount:
                 await interaction.followup.send(
                     embed=create_embed(
-                        "❌ 金額不一致",
+                        "金額不一致",
                         f"### 指定された金額は **{expected_amount}**円ですが、リンクの金額は **{jpy_amount}**円でした。",
                         discord.Color.red()
                     ),
@@ -132,8 +220,9 @@ class LinkInputModal(discord.ui.Modal, title="送金リンクを入力"):
 
             if existing:
                 if existing.get("sender_external_id") != sender_id:
-                    admin_user = await interaction.client.fetch_user(1154344959646908449)
-                    await admin_user.send(f"⚠️ ユーザー <@{user_id}> が異なる sender_external_id で登録を試みました。")
+                    if ADMIN_USER_ID:
+                        admin_user = await interaction.client.fetch_user(ADMIN_USER_ID)
+                        await admin_user.send(f"⚠️ ユーザー <@{user_id}> が異なる sender_external_id で登録を試みました。")
                     await interaction.followup.send(
                         embed=create_embed(
                             "⚠️ エラーが発生しました",
@@ -182,24 +271,113 @@ class LinkInputModal(discord.ui.Modal, title="送金リンクを入力"):
                 ephemeral=True
             )
 
-class PayinModal(discord.ui.Modal, title="入金"):
+class PayinModal(discord.ui.Modal):
+    """入金モーダル（テスト/本番で入力方法を切り替え）"""
+    
     def __init__(self):
-        super().__init__()
-        self.link = discord.ui.TextInput(label="PayPayリンク", placeholder="PayPay送金リンクを入力")
-        self.add_item(self.link)
+        # テストモードと本番モードでタイトルを変更
+        title = "入金（テストモード）" if IS_TEST_MODE else "入金"
+        super().__init__(title=title)
+        
+        if IS_TEST_MODE:
+            # テストモード: 金額を数字で入力
+            self.amount_input = discord.ui.TextInput(
+                label="入金額（円）",
+                placeholder="例: 1000",
+                required=True,
+                max_length=10
+            )
+            self.add_item(self.amount_input)
+        else:
+            # 本番モード: PayPayリンクを入力
+            self.link = discord.ui.TextInput(
+                label="PayPayリンク",
+                placeholder="PayPay送金リンクを入力",
+                required=True
+            )
+            self.add_item(self.link)
 
     async def on_submit(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         user = interaction.user
         await interaction.response.defer(ephemeral=True)
 
+        # ユーザー登録確認
         existing = users_collection.find_one({"user_id": user_id})
         if not existing:
-            
             embed = EmbedFactory.not_registered()
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
+        # テストモードと本番モードで処理を分岐
+        if IS_TEST_MODE:
+            await self._handle_test_mode_payin(interaction, user_id, user, existing)
+        else:
+            await self._handle_production_mode_payin(interaction, user_id, user, existing)
+
+    async def _handle_test_mode_payin(self, interaction: discord.Interaction, user_id: int, user: discord.User, existing: dict):
+        """テストモードの入金処理"""
+        try:
+            # 金額を数字で取得
+            jpy_amount = Decimal(self.amount_input.value.strip())
+            
+            if jpy_amount <= 0:
+                embed = create_embed("", "入金額は正の数値を入力してください。", discord.Color.red())
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+                
+        except (ValueError, AttributeError):
+            embed = create_embed("", "有効な数値を入力してください。（例: 1000）", discord.Color.red())
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        # 手数料計算
+        total_pnc = jpy_to_pnc(jpy_amount)
+        no_fee_day = is_no_fee_mode_enabled()
+
+        if no_fee_day:
+            fee_jpy = Decimal(0)
+            fee_pnc = Decimal(0)
+            net_pnc = total_pnc
+        else:
+            fee_jpy = max((jpy_amount * Decimal("0.14")).quantize(Decimal("1"), rounding=ROUND_HALF_UP), Decimal(10))
+            fee_pnc = jpy_to_pnc(fee_jpy)
+            net_pnc = total_pnc - fee_pnc
+
+        # 最低入金額チェック
+        gross_min_jpy = pnc_to_jpy(MIN_INITIAL_DEPOSIT)
+        min_fee_jpy = max((gross_min_jpy * Decimal("0.14")).quantize(Decimal("1"), rounding=ROUND_HALF_UP), Decimal(10))
+        required_jpy = gross_min_jpy + min_fee_jpy
+
+        if jpy_amount < required_jpy:
+            shortfall = required_jpy - jpy_amount
+            shortfall_pnc = jpy_to_pnc(shortfall)
+
+            embed = create_embed(
+                "",
+                f"最低入金PNC: `{int(MIN_INITIAL_DEPOSIT):,}`（約 ¥{int(gross_min_jpy):,}）が必要です。\n"
+                f"手数料目安: 約 ¥{int(min_fee_jpy):,}。\n"
+                f"合計必要額: 約 ¥{int(required_jpy):,}（不足分: 約 ¥{int(shortfall):,} ≒ {PNC_EMOJI_STR}`{int(shortfall_pnc)}`）を送金してください。",
+                discord.Color.yellow()
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        # テストモード: 即座に残高を更新
+        update_user_balance(user_id, int(net_pnc))
+        log_transaction(user_id=user_id, type="payin", amount=int(jpy_amount), payout=int(net_pnc))
+
+        embed = discord.Embed(title="入金完了（テストモード）", color=discord.Color.green())
+        embed.add_field(name="入金額", value=f"`¥{int(jpy_amount):,}` → {PNC_EMOJI_STR} `{int(total_pnc):,}`", inline=True)
+        embed.add_field(name="手数料（14% or ¥10）", value=f"`¥{int(fee_jpy):,}` → {PNC_EMOJI_STR} `{int(fee_pnc):,}`", inline=True)
+        embed.add_field(name="現在の残高", value=f"{PNC_EMOJI_STR}`{get_user_balance(user_id):,}`", inline=False)
+        embed.set_footer(text="※ テストモード: 実際の金銭取引は発生していません")
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    async def _handle_production_mode_payin(self, interaction: discord.Interaction, user_id: int, user: discord.User, existing: dict):
+        """本番モードの入金処理（PayPayリンク使用）"""
+        # PayPayリンクの検証
         link_match = re.search(PAYPAY_LINK_REGEX, self.link.value)
         if not link_match:
             embed = create_embed("", "無効なリンクです。有効な PayPay リンクを入力してください。", discord.Color.red())
@@ -216,8 +394,9 @@ class PayinModal(discord.ui.Modal, title="入金"):
 
             sender_id = link_info.sender_external_id
             if existing.get("sender_external_id") != sender_id:
-                admin_user = await interaction.client.fetch_user(1154344959646908449)
-                await admin_user.send(f"⚠️ ユーザー <@{user_id}> が延長時に異なる sender_external_id を使用しました。")
+                if ADMIN_USER_ID:
+                    admin_user = await interaction.client.fetch_user(ADMIN_USER_ID)
+                    await admin_user.send(f"⚠️ ユーザー <@{user_id}> が延長時に異なる sender_external_id を使用しました。")
 
                 embed = create_embed(
                     "⚠️ セキュリティエラー",
