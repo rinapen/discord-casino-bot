@@ -12,7 +12,7 @@ from utils.embed_factory import EmbedFactory
 
 from ui.game.dice import ongoing_games
 from ui.game.dice import ContinueButton
-from config import DICE_FOLDER
+from config import DICE_FOLDER, CURRENCY_NAME
 
 async def on_dice_command(message):
     try:
@@ -60,7 +60,7 @@ async def on_dice_command(message):
         gif_path1 = f"{DICE_FOLDER}/gif/{die1}.gif"
         gif_path2 = f"{DICE_FOLDER}/gif/{die2}.gif"
         files = [File(gif_path1, filename="dice1.gif"), File(gif_path2, filename="dice2.gif")]
-        embed = create_embed("PNCダイス", f"{PNC_EMOJI_STR}`{bet_amount}`を賭けてサイコロを振っています...", BASE_COLOR_CODE)
+        embed = create_embed(f"{CURRENCY_NAME}ダイス", f"{PNC_EMOJI_STR}`{bet_amount}`を賭けてサイコロを振っています...", BASE_COLOR_CODE)
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1219916908485283880/1389815902278647818/ChatGPT_Image_202572_12_51_52.png?ex=6865fe6c&is=6864acec&hm=1532507b0941122a27dbc8859aa83321cad484328bd9f310d43c3b7ed63a2fcc&")
         embed.set_author(
             name=f"{message.author.name}",
@@ -78,7 +78,7 @@ async def on_dice_command(message):
         files = [File(result_path1, filename="die1.png"), File(result_path2, filename="die2.png")]
 
         result_embed = create_embed(
-            title="PNCダイス結果",
+            title=f"{CURRENCY_NAME}ダイス結果",
             description=f"# {die1} + {die2} = **{total}**",
             color=discord.Color.from_str("#26ffd4")
         )

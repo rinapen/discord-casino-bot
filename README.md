@@ -162,6 +162,24 @@
   - matplotlib (グラフ生成)
   - pytz (タイムゾーン)
   - pymongo (MongoDB接続)
+  - PayPaython_mobile (PayPay API連携、**使用非推奨**)
+
+### PayPayモジュールについて
+
+**⚠️ 重要な注意事項:**
+
+このプロジェクトは`PayPaython_mobile`モジュールを使用してPayPay APIと連携する機能を含んでいますが、**実際のPayPayモジュールの使用は推奨しません。**
+
+**理由:**
+- PayPayの利用規約に違反する可能性がある
+- 自動化スクリプトによるPayPay APIの利用は禁止されている
+- アカウント停止のリスクがある
+- 法的リスクがある
+
+**推奨される使用方法:**
+- **テストモードのみ使用**: `ENVIRONMENT=test`で設定すると、PayPayモジュールは読み込まれず、モックデータで動作します
+- **教育目的のみ**: このコードは技術学習目的でのみ使用してください
+- **実際の金銭取引には使用しない**: 本番モードでの使用は避けてください
 
 ## インストール
 
@@ -237,9 +255,18 @@ ADMIN_USER_ID=your_admin_user_id
 EXCLUDED_USER_IDS=123456789,987654321
 
 # ========================================
-# PayPay設定（本番モード時のみ）
+# 通貨設定
 # ========================================
-# WARNING: ENVIRONMENT=production の場合のみ設定
+# 通貨名（デフォルト: PNC）
+# 例: CURRENCY_NAME=PNC
+# 例: CURRENCY_NAME=コイン
+CURRENCY_NAME=PNC
+
+# ========================================
+# PayPay設定（本番モード時のみ・使用非推奨）
+# ========================================
+# ⚠️ WARNING: 実際のPayPayモジュールの使用は推奨しません
+# ENVIRONMENT=production の場合のみ設定されますが、使用は自己責任です
 # テストモードでは不要・使用されません
 # PAYPAY_PHONE_NUMBER=your_phone_number
 # PAYPAY_PIN=your_pin
@@ -256,6 +283,11 @@ EXCLUDED_USER_IDS=123456789,987654321
 - `ADMIN_USER_ID` - 管理者のユーザーID
 
 ### オプション設定項目
+
+- `CURRENCY_NAME` - 通貨名（デフォルト: PNC）
+  - 例: `CURRENCY_NAME=PNC`
+  - 例: `CURRENCY_NAME=コイン`
+  - 全システム内で使用される通貨名を設定可能
 
 - `EXCLUDED_USER_IDS` - 統計から除外するユーザーID（カンマ区切り）
   - 例: `123456789,987654321`
@@ -282,12 +314,16 @@ ENVIRONMENT=test
 ENVIRONMENT=production
 ```
 
+**⚠️ 重要: 本番モードの使用は強く非推奨です**
+
 **注意:**
-- 実際のPayPayに接続
+- 実際のPayPayに接続（PayPaython_mobileモジュールを使用）
 - 実際の金銭取引が発生
+- PayPayの利用規約に違反する可能性が高い
+- アカウント停止のリスク
 - 法的リスクあり
 - PayPay認証情報が必要
-- 使用は自己責任
+- **使用は自己責任で、一切の責任を負いません**
 
 5. **ボットの起動**
 

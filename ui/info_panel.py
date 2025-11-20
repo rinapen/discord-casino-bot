@@ -113,8 +113,8 @@ GAME_INFO = {
             "・ブラックジャック: 賭け金の2.5倍\n"
             "・引き分け: 賭け金返却\n\n"
             "**最小/最大ベット**\n"
-            "・最小: 1,000 PNC\n"
-            "・最大: 100,000 PNC"
+            f"・最小: 1,000 {config.CURRENCY_NAME}\n"
+            f"・最大: 100,000 {config.CURRENCY_NAME}"
         ),
         "color": discord.Color.dark_blue(),
         "image": "blackjack.png"
@@ -133,8 +133,8 @@ GAME_INFO = {
             "・開けたマスの数に応じて増加\n"
             "・地雷の数が多いほど倍率上昇\n\n"
             "**最小/最大ベット**\n"
-            "・最小: 100 PNC\n"
-            "・最大: 100,000 PNC"
+            f"・最小: 100 {config.CURRENCY_NAME}\n"
+            f"・最大: 100,000 {config.CURRENCY_NAME}"
         ),
         "color": discord.Color.orange(),
         "image": "mines.png"
@@ -168,7 +168,7 @@ COMMAND_INFO = {
             "**送金**\n"
             "`?送金 @ユーザー [金額]` - 他のユーザーに送金\n\n"
             "**景品**\n"
-            "`?交換` - PNC残高を景品に交換\n"
+            f"`?交換` - {config.CURRENCY_NAME}残高を景品に交換\n"
             "`?ポケット` - 景品ポケットの中身を確認\n"
             "`?引換` - アカウント交換券を実際のアカウントに引き換え"
         ),
@@ -180,16 +180,16 @@ COMMAND_INFO = {
         "description": (
             "**フリップ（コインフリップ）**\n"
             "`?フリップ [賭け金]`\n"
-            "最小: 100 PNC / 配当: 2倍\n\n"
+            f"最小: 100 {config.CURRENCY_NAME} / 配当: 2倍\n\n"
             "**ダイス**\n"
             "`?ダイス [賭け金]`\n"
-            "最小: 100 PNC / 配当: 6倍\n\n"
+            f"最小: 100 {config.CURRENCY_NAME} / 配当: 6倍\n\n"
             "**ブラックジャック**\n"
             "`?bj [賭け金]`\n"
-            "最小: 1,000 PNC / 配当: 2倍〜2.5倍\n\n"
+            f"最小: 1,000 {config.CURRENCY_NAME} / 配当: 2倍〜2.5倍\n\n"
             "**マインズ**\n"
             "`?マインズ [賭け金] [地雷数]`\n"
-            "最小: 100 PNC / 配当: 変動"
+            f"最小: 100 {config.CURRENCY_NAME} / 配当: 変動"
         ),
         "color": BASE_COLOR_CODE,
         "image": None
@@ -354,7 +354,7 @@ class InfoNavigationView(View):
             admin_user_id = config.ADMIN_USER_ID if config.ADMIN_USER_ID else "運営"
             embed = discord.Embed(
                 title=f"{TIP3_EMOJI} 景品",
-                description=f"皆さん景品に関するご質問は、<@{admin_user_id}>に聞いてます。\n\nPNCから景品への交換は `?交換` コマンドで行えます。",
+                description=f"皆さん景品に関するご質問は、<@{admin_user_id}>に聞いてます。\n\n{config.CURRENCY_NAME}から景品への交換は `?交換` コマンドで行えます。",
                 color=discord.Color.gold()
             )
             

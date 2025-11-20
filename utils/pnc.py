@@ -16,6 +16,7 @@ import pytz
 from database.db import users_collection, financial_transactions_collection
 from bot import bot
 import config
+from config import CURRENCY_NAME
 
 # ========================================
 # 定数
@@ -292,7 +293,7 @@ def create_pnc_rank_pages(user_data: list[tuple[int, int]], per_page: int = 10) 
         start = i * per_page
         end = start + per_page
         embed = Embed(
-            title="PNC保有ランキング",
+            title=f"{CURRENCY_NAME}保有ランキング",
             description=f"全ユーザーの残高一覧（{i+1}/{total_pages}）",
             color=discord.Color.gold()
         )
@@ -309,7 +310,7 @@ def create_pnc_rank_pages(user_data: list[tuple[int, int]], per_page: int = 10) 
                 print(f"[WARN] fetch_user error for {user_id}: {e}")
                 name = f"Unknown({user_id})"
 
-            embed.add_field(name=f"#{rank} {name}", value=f"`{balance:,} PNC`", inline=False)
+            embed.add_field(name=f"#{rank} {name}", value=f"`{balance:,} {CURRENCY_NAME}`", inline=False)
 
         pages.append(embed)
 

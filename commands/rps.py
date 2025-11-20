@@ -11,6 +11,7 @@ from utils.emojis import PNC_EMOJI_STR, WIN_EMOJI, ROCK_HAND_EMOJI, SCISSOR_HAND
 from utils.logs import send_casino_log
 from utils.color import RPS_COLOR, SUCCESS_COLOR, DRAW_COLOR
 from database.db import get_user_balance, update_user_balance, load_pf_params, is_blacklisted
+from config import CURRENCY_NAME
 import aiohttp
 import traceback
 
@@ -237,7 +238,7 @@ async def on_rps_command(message):
         buf.seek(0)
         file = discord.File(buf, filename="rps_result.png")
 
-        embed = create_embed("PNCじゃんけん", "じゃんけんぽん！", discord.Color(RPS_COLOR))
+        embed = create_embed(f"{CURRENCY_NAME}じゃんけん", "じゃんけんぽん！", discord.Color(RPS_COLOR))
         embed.set_image(url="attachment://rps_result.png")
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1219916908485283880/1387141204604620918/ChatGPT_Image_2025625_03_43_31.png")
         embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
@@ -390,7 +391,7 @@ class RPSPlayView(discord.ui.View):
             result_str = {"win": "WIN", "lose": "LOSE", "draw": "DRAW"}[result]
             color = discord.Color.green() if result == "win" else discord.Color.red() if result == "lose" else discord.Color(DRAW_COLOR)
 
-            embed = create_embed("PNCじゃんけん", f"### {PNC_EMOJI_STR}`{session.calc_win_amount()}` **{result_str}**", color)
+            embed = create_embed(f"{CURRENCY_NAME}じゃんけん", f"### {PNC_EMOJI_STR}`{session.calc_win_amount()}` **{result_str}**", color)
             embed.set_image(url="attachment://rps_result.png")
             embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1219916908485283880/1387141204604620918/ChatGPT_Image_2025625_03_43_31.png?ex=685c436b&is=685af1eb&hm=ee447640b7d37905669af4ea5364e84788e9a0874a010b2fb5a13205968b4154&")
             embed.add_field(name="🔐 Provably Fair", value=pf.get_pf_info(), inline=False)

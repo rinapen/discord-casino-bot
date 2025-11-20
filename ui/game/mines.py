@@ -9,6 +9,7 @@ from utils.logs import send_casino_log, log_transaction
 from utils.emojis import MINE_EMOJI, DIAMOND_EMOJI, MINE_EMOJI_TEXT, DIAMOND_EMOJI_TEXT, PNC_EMOJI_STR, WIN_EMOJI
 from utils.sys import generate_server_seed, hash_server_seed, get_hmac_sha256
 from utils.color import BASE_COLOR_CODE
+from config import CURRENCY_NAME
 
 GRID_SIZE = 5
 
@@ -39,7 +40,7 @@ def create_mines_embed(game, reveal_all=False, result=None, payout=None):
     else:
         embed_color = BASE_COLOR_CODE
 
-    embed = discord.Embed(title="PNCマインズ", color=embed_color)
+    embed = discord.Embed(title=f"{CURRENCY_NAME}マインズ", color=embed_color)
     embed.set_author(
         name=f"{game.user.name}",
         icon_url=game.user.display_avatar.url

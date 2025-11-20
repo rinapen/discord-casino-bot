@@ -92,6 +92,11 @@ BOT_STATE_COLLECTION: Final[str] = os.getenv("BOT_STATE_COLLECTION", "bot_state"
 BLACKLIST_COLLECTION: Final[str] = os.getenv("BLACKLIST_COLLECTION", "blacklist")
 
 # ========================================
+# 通貨設定
+# ========================================
+CURRENCY_NAME: Final[str] = safe_get_str_env("CURRENCY_NAME", "COIN") or "COIN"  # 通貨名（デフォルト: COIN）
+
+# ========================================
 # 経済設定
 # ========================================
 MIN_INITIAL_DEPOSIT: Final[int] = 100  # 初期入金の最低金額

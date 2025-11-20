@@ -8,7 +8,7 @@ from database.db import get_user_balance
 from utils.emojis import PNC_EMOJI_STR
 from utils.embed_factory import EmbedFactory
 from ui.game.flip import CoinFlipView
-from config import THUMBNAIL_URL, FLIP_GIF_URL
+from config import THUMBNAIL_URL, FLIP_GIF_URL, CURRENCY_NAME
 
 # ========================================
 # 定数
@@ -54,7 +54,7 @@ async def on_coinflip_command(message: discord.Message) -> None:
     
     # ゲームEmbed作成
     embed = discord.Embed(
-        title="PNCフリップ",
+        title=f"{CURRENCY_NAME}フリップ",
         description=f"**ベット額**\n### {PNC_EMOJI_STR}`{bet}`",
         color=0x393a41
     )

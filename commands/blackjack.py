@@ -12,6 +12,7 @@ from utils.color import BLACKJACK_COLOR
 from utils.embed_factory import EmbedFactory
 
 from ui.game.blackjack import BlackjackGame, BlackjackView, blackjack_games
+from config import CURRENCY_NAME
 
 async def on_blackjack_command(message: discord.Message):
     try:
@@ -72,7 +73,7 @@ async def on_blackjack_command(message: discord.Message):
             buf.seek(0)
             file = discord.File(buf, filename="blackjack.png")
 
-            embed = create_embed("PNCブラックジャック", f"{user.mention}", BLACKJACK_COLOR)
+            embed = create_embed(f"{CURRENCY_NAME}ブラックジャック", f"{user.mention}", BLACKJACK_COLOR)
             embed.set_image(url="attachment://blackjack.png")
             embed.add_field(name="掛け金", value=f"{PNC_EMOJI_STR}`{bet:,}`", inline=False)
             embed.set_author(name=user.display_name, icon_url=user.display_avatar.url)

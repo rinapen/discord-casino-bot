@@ -8,7 +8,7 @@ from utils.emojis import DICE_EMOJI, PNC_EMOJI_STR, WIN_EMOJI
 from utils.embed import create_embed
 from utils.logs import send_casino_log
 from utils.color import BASE_COLOR_CODE
-from config import DICE_FOLDER
+from config import DICE_FOLDER, CURRENCY_NAME
 
 ongoing_games = {}
 class ContinueButton(discord.ui.View):
@@ -34,7 +34,7 @@ class ContinueButton(discord.ui.View):
         gif_path2 = f"{DICE_FOLDER}/gif/{die2}.gif"
         gif_files = [File(gif_path1, filename="dice1.gif"), File(gif_path2, filename="dice2.gif")]
 
-        rolling_embed = create_embed("PNCダイス 続行", f"### 目標ポイント[**{self.point}**]\nサイコロを振っています...", BASE_COLOR_CODE)
+        rolling_embed = create_embed(f"{CURRENCY_NAME}ダイス 続行", f"### 目標ポイント[**{self.point}**]\nサイコロを振っています...", BASE_COLOR_CODE)
         rolling_embed.set_author(
             name=interaction.user.name,
             icon_url=interaction.user.display_avatar.url
@@ -78,7 +78,7 @@ class ContinueButton(discord.ui.View):
             result_text = "\n\n### まだ勝負はついていません。\nもう一度ボタンを押して続けてください。"
             next_view = ContinueButton(self.user_id, self.bet_amount, self.point)
 
-        final_embed = create_embed("PNCダイス 継続結果", description + result_text, embed_color)
+        final_embed = create_embed(f"{CURRENCY_NAME}ダイス 継続結果", description + result_text, embed_color)
         final_embed.set_author(
             name=interaction.user.name,
             icon_url=interaction.user.display_avatar.url

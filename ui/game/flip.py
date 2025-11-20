@@ -4,7 +4,7 @@ import random
 from database.db import update_user_balance
 from utils.emojis import PNC_EMOJI_STR, WIN_EMOJI
 from utils.logs import send_casino_log
-from config import FRONT_IMG, BACK_IMG, THUMBNAIL_URL
+from config import FRONT_IMG, BACK_IMG, THUMBNAIL_URL, CURRENCY_NAME
 
 class CoinFlipView(discord.ui.View):
     def __init__(self, user, bet):
@@ -35,7 +35,7 @@ class CoinFlipButton(discord.ui.Button):
         win = (outcome == self.label)
 
         embed = discord.Embed(
-            title="PNCフリップ",
+            title=f"{CURRENCY_NAME}フリップ",
             description=(
                 f"あなたの選択: **{self.label}**\n"
                 f"結果: **{outcome}**\n"
