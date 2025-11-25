@@ -23,7 +23,7 @@ async def on_mines_command(message: discord.Message):
             return
 
         amount = int(args[1])
-        mine_count = int(args.group[2])
+        mine_count = int(args[2])
         user = message.author
         user_id = user.id
         
