@@ -31,9 +31,6 @@ STAKE_MINES_MULTIPLIERS_REDUCED = {
 }
 
 def get_stake_multiplier(mine_count: int, revealed_count: int) -> float:
-    """
-    地雷数と開けた数から、低倍率版テーブルに基づく倍率を取得する。
-    """
     table = STAKE_MINES_MULTIPLIERS_REDUCED.get(mine_count)
     if table and 0 <= revealed_count - 1 < len(table):
         return round(table[revealed_count - 1], 4)
@@ -41,7 +38,6 @@ def get_stake_multiplier(mine_count: int, revealed_count: int) -> float:
 
 
 def get_safe_multiplier(mine_count, revealed_count, bet_amount, bank_balance, safety_margin=0.5):
-    """倍率テーブルから倍率を取得し、銀行の残高に応じて制限"""
     table = STAKE_MINES_MULTIPLIERS.get(mine_count, [])
     if revealed_count <= 0 or revealed_count > len(table):
         return 1.0
