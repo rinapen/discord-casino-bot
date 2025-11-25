@@ -1,7 +1,3 @@
-"""
-カジノボットの設定ファイル
-環境変数から設定を読み込み、デフォルト値を提供します
-"""
 import os
 from typing import Final
 from dotenv import load_dotenv
@@ -9,21 +5,7 @@ import pytz
 
 load_dotenv()
 
-
-# ========================================
-# ヘルパー関数
-# ========================================
 def safe_get_int_env(key: str, default: int = 0) -> int:
-    """
-    環境変数を安全に整数として取得
-    
-    Args:
-        key: 環境変数名
-        default: デフォルト値
-    
-    Returns:
-        環境変数の値（整数）、無効な場合はデフォルト値
-    """
     value = os.getenv(key)
     
     if not value or value.startswith("your_") or value.startswith("YOUR_"):
@@ -41,16 +23,6 @@ def safe_get_int_env(key: str, default: int = 0) -> int:
 
 
 def safe_get_str_env(key: str, default: str | None = None) -> str | None:
-    """
-    環境変数を安全に文字列として取得
-    
-    Args:
-        key: 環境変数名
-        default: デフォルト値
-    
-    Returns:
-        環境変数の値、無効な場合はデフォルト値
-    """
     value = os.getenv(key)
     
     if not value or value.startswith("your_") or value.startswith("YOUR_"):
@@ -62,23 +34,17 @@ def safe_get_str_env(key: str, default: str | None = None) -> str | None:
     
     return value
 
-# ========================================
-# データベース設定
-# ========================================
 def safe_get_mongo_uri() -> str:
-    """MongoDB URIを安全に取得"""
     value = safe_get_str_env("MONGO_URI", "mongodb://localhost:27017/")
     return value if value else "mongodb://localhost:27017/"
 
 def safe_get_db_name() -> str:
-    """データベース名を安全に取得"""
     value = safe_get_str_env("DB_NAME", "paypay_bot")
     return value if value else "paypay_bot"
 
 MONGO_URI: Final[str] = safe_get_mongo_uri()
 DB_NAME: Final[str] = safe_get_db_name()
 
-# コレクション名
 TOKENS_COLLECTION: Final[str] = os.getenv("TOKENS_COLLECTION", "tokens")
 USERS_COLLECTION: Final[str] = os.getenv("USERS_COLLECTION", "users")
 SETTINGS_COLLECTION: Final[str] = os.getenv("SETTINGS_COLLECTION", "settings")
@@ -91,72 +57,38 @@ BET_HISTORY_COLLECTION: Final[str] = os.getenv("BET_HISTORY_COLLECTION", "bet_hi
 BOT_STATE_COLLECTION: Final[str] = os.getenv("BOT_STATE_COLLECTION", "bot_state")
 BLACKLIST_COLLECTION: Final[str] = os.getenv("BLACKLIST_COLLECTION", "blacklist")
 
-# ========================================
-# 通貨設定
-# ========================================
 CURRENCY_NAME: Final[str] = safe_get_str_env("CURRENCY_NAME", "COIN") or "COIN"  # 通貨名（デフォルト: COIN）
 
-# ========================================
-# 経済設定
-# ========================================
-MIN_INITIAL_DEPOSIT: Final[int] = 100  # 初期入金の最低金額
+MIN_INITIAL_DEPOSIT: Final[int] = 100  # 入金の最低金額
 TAX_RATE: Final[float] = 0.1  # 10% の税金
 FEE_RATE: Final[float] = 0.05  # 5% の手数料
-PAYOUT_MIN_JPY: Final[int] = 100
-PAYOUT_MIN_PNC: Final[int] = PAYOUT_MIN_JPY * 10
-PAYOUT_DISABLED: Final[bool] = True
 
-# 景品交換設定
-EXCHANGE_ENABLED: Final[bool] = os.getenv("EXCHANGE_ENABLED", "false").lower() == "true"
+MIN_BET: Final[dict[str, int]] = {
+    "blackjack": 100,
+    "dice": 50,
+    "flip": 50,
+    "mines": 100,
+    "rps": 100,
+    "hitandblow": 100,
+}
 
-# 景品の種類と必要PNC（手数料込み）
-PRIZE_LARGE_JPY: Final[int] = 5000  # 大景品の換金額
-PRIZE_MEDIUM_JPY: Final[int] = 1000  # 中景品の換金額
-PRIZE_SMALL_JPY: Final[int] = 500   # 小景品の換金額
-
-# アカウント交換設定
-ACCOUNT_EXCHANGE_JPY: Final[int] = 80  # アカウント1つの換金額
-ACCOUNT_EXCHANGE_PNC_BASE: Final[int] = 800  # 基本PNC（手数料別）
-
-# ========================================
-# PayPay設定
-# ========================================
-PAYPAY_ICON_URL: Final[str] = "https://cdn.discordapp.com/attachments/1219916908485283880/1380606272629637271/AieC1ypSSh_2rctvrNtVggyFRP9cNtvnEIPkVmzZGFlhN8bNdHCl3GZbxK7O8vCe7A.png?ex=68447d49&is=68432bc9&hm=fa35f7815dfffd5d0b5ec152538ce2ab4b4031079d3dcdaf67c71fb591714f4a&"
-PAYPAY_LINK_REGEX: Final[str] = r"https://pay\.paypay\.ne\.jp/[a-zA-Z0-9]+"
-
-# ========================================
-# パス設定
-# ========================================
 DICE_FOLDER: Final[str] = "assets/dice"
 
-# ========================================
-# Discord設定
-# ========================================
 GUILD_ID: Final[int] = safe_get_int_env("GUILD_ID", 0)
 ACCOUNT_CHANNEL_ID: Final[int] = safe_get_int_env("ACCOUNT_CHANNEL_ID", 0)
 INVITE_PANEL_CHANNEL_ID: Final[int] = safe_get_int_env("INVITE_PANEL_CHANNEL_ID", 0)
 HITANDBLOW_CATEGORY_ID: Final[int] = safe_get_int_env("HITANDBLOW_CATEGORY_ID", 0)
 INFO_PANEL_CHANNEL_ID: Final[int] = safe_get_int_env("INFO_PANEL_CHANNEL_ID", 0)
 
-# ロールID
 PURCHASER_ROLE_ID: Final[int] = safe_get_int_env("PURCHASER_ROLE_ID", 0)
 
-# ========================================
-# アセットURL
-# ========================================
 FLIP_GIF_URL: Final[str] = "https://cdn.discordapp.com/attachments/1219916908485283880/1383914774131376270/U4ObEcJW9ksvEN6tCmsf1750021234-1750021370.gif?ex=68508692&is=684f3512&hm=7370c85f4237840cf3b769c29f51f2cb60033e351e934206a2bbab75209d77fc&"
 THUMBNAIL_URL: Final[str] = "https://cdn.discordapp.com/attachments/1219916908485283880/1386322194111533147/ChatGPT_Image_2025622_21_28_04.png?ex=685948a7&is=6857f727&hm=548ff6d889653c59ec69f641efc2c21192c6cdb2c0798ae2c5d2d3cc289a38dd&"
 FRONT_IMG: Final[str] = "https://cdn.discordapp.com/attachments/1219916908485283880/1383915331185020989/0.png?ex=68508716&is=684f3596&hm=1da630e3b7a3447d7c72e434c2b8626775063a1b2b4f58abbb595f2d2bafa3ee&"
 BACK_IMG: Final[str] = "https://cdn.discordapp.com/attachments/1219916908485283880/1383915330933620796/23.png?ex=68508716&is=684f3596&hm=ba04bb357d7656faf58734b0f94af17e2463cd00a356bb74e0a338044ea47bd5&"
 
-# ========================================
-# タイムゾーン設定
-# ========================================
 JST: Final = pytz.timezone("Asia/Tokyo")
 
-# ========================================
-# ゲームアセット
-# ========================================
 CARD_EMOJIS: Final[dict[str, list[str]]] = {
     "S": ["<:s1:1348291843904901200>", "<:s2:1348291845561647196>", "<:s3:1348291847742689331>", "<:s4:1348291849332195358>",
           "<:s5:1348291851014373456>", "<:s6:1348291852788437073>", "<:s7:1348291859952304140>", "<:s8:1348291861521109122>",
@@ -179,33 +111,11 @@ CARD_EMOJIS: Final[dict[str, list[str]]] = {
           "<:hk:1348291962863616000>"]
 }
 
-# ========================================
-# 環境モード設定
-# ========================================
-ENVIRONMENT: Final[str] = os.getenv("ENVIRONMENT", "test")  # "test" or "production"
-IS_TEST_MODE: Final[bool] = ENVIRONMENT.lower() == "test"
-IS_PRODUCTION_MODE: Final[bool] = ENVIRONMENT.lower() == "production"
-
-# ========================================
-# 認証情報（環境変数から取得）
-# ========================================
 TOKEN: Final[str | None] = safe_get_str_env("DISCORD_BOT_TOKEN")
 if not TOKEN:
     print("[ERROR] DISCORD_BOT_TOKEN が設定されていません。ボットは起動できませんが、設定チェックは続行します。")
 
-# PayPay設定（本番環境のみ使用）
-PAYPAY_PHONE_NUMBER: Final[str | None] = (
-    safe_get_str_env("PAYPAY_PHONE_NUMBER") if IS_PRODUCTION_MODE else None
-)
-PAYPAY_PIN: Final[str | None] = (
-    safe_get_str_env("PAYPAY_PIN") if IS_PRODUCTION_MODE else None
-)
-
-# ========================================
-# 管理者・除外ユーザーID
-# ========================================
 def safe_get_admin_user_id() -> int | None:
-    """管理者ユーザーIDを安全に取得"""
     value = os.getenv("ADMIN_USER_ID")
     
     if not value or value.startswith("your_") or value.startswith("YOUR_"):
@@ -221,11 +131,10 @@ def safe_get_admin_user_id() -> int | None:
         print(f"[WARN] 環境変数 ADMIN_USER_ID の値 '{value}' が無効です。管理者機能が無効化されます。")
         return None
 
+# 管理者ユーザー
 ADMIN_USER_ID: Final[int | None] = safe_get_admin_user_id()
 
-
 def safe_get_excluded_user_ids() -> list[int]:
-    """除外ユーザーIDリストを安全に取得"""
     value = os.getenv("EXCLUDED_USER_IDS", "")
     
     if not value or value.startswith("your_") or value.startswith("YOUR_"):
@@ -240,11 +149,10 @@ def safe_get_excluded_user_ids() -> list[int]:
         print(f"[WARN] 環境変数 EXCLUDED_USER_IDS の値 '{value}' が無効です。除外ユーザーなしで動作します。エラー: {e}")
         return []
 
+# 除外ユーザー
 EXCLUDED_USER_IDS: Final[list[int]] = safe_get_excluded_user_ids()
 
-# ========================================
-# ログチャンネルID（環境変数から取得）
-# ========================================
+# チャンネル
 CASINO_LOG_CHANNEL_ID: Final[str | None] = safe_get_str_env("CASINO_LOG_CHANNEL_ID")
 PAYIN_LOG_CHANNEL_ID: Final[str | None] = safe_get_str_env("PAYIN_LOG_CHANNEL_ID")
 PAYOUT_LOG_CHANNEL_ID: Final[str | None] = safe_get_str_env("PAYOUT_LOG_CHANNEL_ID")
