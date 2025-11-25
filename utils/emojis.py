@@ -1,10 +1,11 @@
 import discord
 import os
 
-PNC_EMOJI_STR = f"<a:pnc:1435881764823240775>"
+PNC_EMOJI = discord.PartialEmoji(name="pnc", id=1435881764823240775, animated=True)
+PNC_EMOJI_STR = str(PNC_EMOJI)
 
-OK_EMOJI="<a:Ok:1390457860328128623>"
-NOTYET_EMOJI = "<a:No:1390457916150255777>"
+OK_EMOJI = discord.PartialEmoji(name="Ok", id=1390457860328128623, animated=True)
+NOTYET_EMOJI = discord.PartialEmoji(name="No", id=1390457916150255777, animated=True)
 
 DIAMOND_EMOJI = discord.PartialEmoji(name="diamond", id=1435880731883733073)
 DIAMOND_EMOJI_TEXT = "💎"
@@ -14,12 +15,9 @@ MINE_EMOJI_TEXT = "💣"
 
 DICE_EMOJI = discord.PartialEmoji(name="dice", id=1435885193725608006)
 
-GRAD_FACE = discord.PartialEmoji(name="027", id=1390463028117635173)
-GERO_FACE = discord.PartialEmoji(name="038", id=1390463056433254571)
-
-WIN_EMOJI="<:up:1435884281158434897>"
-LOSE_EMOJI="<:down_mark:1347908644897034320>"
-DRAW_EMOJI="<:draw:1349449575370592336>"
+WIN_EMOJI = discord.PartialEmoji(name="up", id=1435884281158434897)
+LOSE_EMOJI = discord.PartialEmoji(name="down_mark", id=1347908644897034320)
+DRAW_EMOJI = discord.PartialEmoji(name="draw", id=1349449575370592336)
 
 ROCK_HAND_EMOJI = discord.PartialEmoji(name="rock", id=1436218997887733881)
 SCISSOR_HAND_EMOJI = discord.PartialEmoji(name="scissors", id=1436219002367246356)
