@@ -23,7 +23,7 @@ async def on_transfer_command(message: discord.Message):
     amount = int(match.group(2))
 
     if sender_id == recipient_id:
-        embed = create_embed("", "自分自身には送金できないよw", discord.Color.red())
+        embed = create_embed("", "自分自身には送金できません", discord.Color.red())
         await message.channel.send(embed=embed)
         return
 
@@ -51,7 +51,7 @@ async def on_transfer_command(message: discord.Message):
     update_user_balance(recipient_id, amount)
     log_transaction(user_id=sender_id, type="transfer", amount=total_deduction, payout=amount)
 
-    embed = discord.Embed(title="✅ 送金完了", color=discord.Color.blue())
+    embed = discord.Embed(title="[✓] 送金完了", color=discord.Color.blue())
     embed.add_field(name="送金額", value=f"{PNC_EMOJI_STR}`{amount:,}`", inline=False)
     embed.add_field(name="手数料", value=f"{PNC_EMOJI_STR}`{fee:,}`", inline=False)
     embed.add_field(name="合計引き落とし", value=f"{PNC_EMOJI_STR}`{total_deduction:,}`", inline=False)
@@ -70,4 +70,4 @@ async def on_transfer_command(message: discord.Message):
         await user.send(f"**{message.author.display_name}** から {PNC_EMOJI_STR}`{amount:,}` を受け取りました！\n"
                         f"残高: {PNC_EMOJI_STR}`{get_user_balance(recipient_id):,}`")
     except discord.Forbidden:
-        await message.channel.send(f"⚠ 送金は完了しましたが、<@{recipient_id}> にDMを送信できませんでした。")
+        await message.channel.send(f"送金は完了しましたが、<@{recipient_id}> にDMを送信できませんでした。")
