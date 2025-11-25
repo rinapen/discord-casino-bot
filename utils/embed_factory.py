@@ -2,6 +2,7 @@ import discord
 from utils.embed import create_embed
 from config import ACCOUNT_CHANNEL_ID
 from utils.emojis import PNC_EMOJI_STR
+
 class EmbedFactory:
     @staticmethod
     def already_registered():
@@ -44,11 +45,11 @@ class EmbedFactory:
         return create_embed("❌ エラー", message, discord.Color.red())
 
     @staticmethod
-    def success(title="✅ 成功", message="操作が正常に完了しました"):
+    def success(title="[✓] 成功", message="操作が正常に完了しました"):
         return create_embed(title, message, discord.Color.green())
 
     @staticmethod
-    def warning(message="⚠️ 注意が必要です"):
+    def warning(message="⚠️注意が必要です"):
         return create_embed("⚠️ 警告", message, discord.Color.yellow())
 
     @staticmethod
