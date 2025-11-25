@@ -1,6 +1,3 @@
-"""
-アカウントパネル管理モジュール
-"""
 import discord
 from discord.errors import NotFound
 
@@ -11,7 +8,6 @@ from database.db import get_account_panel_message_id, save_account_panel_message
 from commands.account import AccountView
 
 async def setup_account_panel():
-    """アカウントパネルのセットアップ"""
     try:
         channel = await bot.fetch_channel(int(config.ACCOUNT_CHANNEL_ID))
         if not channel:
