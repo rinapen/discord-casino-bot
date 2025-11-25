@@ -11,7 +11,7 @@ from utils.emojis import PNC_EMOJI_STR, WIN_EMOJI, ROCK_HAND_EMOJI, SCISSOR_HAND
 from utils.logs import send_casino_log
 from utils.color import RPS_COLOR, SUCCESS_COLOR, DRAW_COLOR
 from database.db import get_user_balance, update_user_balance, load_pf_params, is_blacklisted
-from config import CURRENCY_NAME
+from config import CURRENCY_NAME, MIN_BET
 import aiohttp
 import traceback
 
@@ -97,18 +97,15 @@ async def generate_rps_progress_image(session, user_avatar, username):
     focus_card_w = 120
     focus_card_h = int(focus_card_w * 1.45)
 
-    # 手の最大幅（カードの幅に対して90%くらいが自然）
+    # 手の最大幅
     hand_target_width = int(focus_card_w * 0.89)
-    hand_size = 80
-
+    
     # 中央のカード位置（右寄せ）
     card_x = width - focus_card_w - 100
     center_y = height // 2
     opponent_card_y = center_y - focus_card_h - 20
     player_card_y = center_y + 20
 
-
-    # カード描画
     card_back = resize_by_width(Image.open(SLOT_CARD_BACK), focus_card_w)
 
     if session.history:
@@ -116,15 +113,12 @@ async def generate_rps_progress_image(session, user_avatar, username):
         player_hand = latest["player"]
         opponent_hand = latest["opponent"]
 
-        # カード画像描画
         bg.paste(card_back, (card_x, opponent_card_y), card_back)
         bg.paste(card_back, (card_x, player_card_y), card_back)
 
-        # この位置で読み込んだ後に定義する
         player_img = resize_keep_aspect(Image.open(f"assets/rps/{player_hand}.1.png").convert("RGBA"), hand_target_width)
         opponent_img = resize_keep_aspect(Image.open(f"assets/rps/{opponent_hand}.2.png").convert("RGBA"), hand_target_width)
 
-        # ←画像読み込み後なのでこれでOK
         opponent_hand_x = card_x - opponent_img.width - 10
         player_hand_x = card_x - player_img.width - 10
 
@@ -192,19 +186,19 @@ async def generate_rps_progress_image(session, user_avatar, username):
 
     return bg
 
-async def on_rps_command(message):
+async def on_rps_command(message: discord.Message):
     try: 
-        m = re.match(r"\?じゃんけん\s+(\d+)", message.content)
-        if not m:
-            embed = create_embed("コマンドの使い方", "`?じゃんけん <金額>`の形式で入力してください。", discord.Color.red())
+        args = message.content.strip().split()
+        if len(args) != 2 or not args[1].isdigit():
+            embed = create_embed("コマンドの使い方", "`?じゃんけん <掛け金>`の形式で入力してください。", discord.Color.red())
             await message.channel.send(embed=embed)
             return
 
-        amount = int(m.group(1))
+        amount = int(args[1])
         uid = message.author.id
         balance = get_user_balance(uid)
-
-        if amount < 100:
+        min_bet = MIN_BET["rps"]
+        if amount < min_bet:
             embed = create_embed("", f"掛け金は最低{PNC_EMOJI_STR}`100`以上にしてください。", discord.Color.red())
             await message.channel.send(embed=embed)
             return
@@ -214,7 +208,6 @@ async def on_rps_command(message):
             await message.channel.send(embed=embed)
             return
 
-        # PFロード部分にtry入れるとより厳密だが、上位でcatchでもOK
         pf_data = load_pf_params(uid)
         if pf_data and len(pf_data) == 3:
             client_seed, server_seed, nonce = pf_data
@@ -226,7 +219,7 @@ async def on_rps_command(message):
         game_sessions[uid] = session
 
         update_user_balance(uid, -amount)
-        await message.channel.send(f"🔐 サーバーシードハッシュ: `{session.pf.server_seed_hash}`")
+        await message.channel.send(f"[🔐] hash: `{session.pf.server_seed_hash}`")
 
         async with aiohttp.ClientSession() as session_http:
             async with session_http.get(message.author.display_avatar.url) as resp:
@@ -246,8 +239,8 @@ async def on_rps_command(message):
         await message.channel.send(embed=embed, view=RPSPlayView(session), file=file)
 
     except Exception as e:
-        traceback.print_exc()  # ターミナル用ログ
-        await message.channel.send(f"⚠️ 内部エラーが発生しました: `{type(e).__name__}: {str(e)}`")
+        traceback.print_exc() 
+        await message.channel.send(f"内部エラーが発生しました: `{type(e).__name__}: {str(e)}`")
 
 
 class RPSResultView(discord.ui.View):
@@ -326,7 +319,6 @@ class RPSPlayView(discord.ui.View):
 
         update_user_balance(self.session.user_id, amount)
 
-        # 🔁 アイコン取得
         async with aiohttp.ClientSession() as session_http:
             async with session_http.get(interaction.user.display_avatar.url) as resp:
                 avatar_bytes = BytesIO(await resp.read())
@@ -345,7 +337,6 @@ class RPSPlayView(discord.ui.View):
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1219916908485283880/1387141204604620918/ChatGPT_Image_2025625_03_43_31.png")
         embed.set_image(url="attachment://rps_result.png")
 
-        # 🔒 全ボタンを無効化した新しいビューを作成
         disabled_view = RPSPlayView(self.session)
         for item in disabled_view.children:
             item.disabled = True
@@ -371,7 +362,6 @@ class RPSPlayView(discord.ui.View):
             opponent_choice = pf.get_opponent_hand()
             result = determine_result(player_choice, opponent_choice)
 
-            # 履歴記録
             session.history.append({
                 "player": player_choice,
                 "opponent": opponent_choice,
@@ -398,7 +388,6 @@ class RPSPlayView(discord.ui.View):
             embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
 
             if result == "lose":
-                # update_user_balance(session.user_id, -session.bet_amount)
                 game_sessions.pop(session.user_id, None)
                 await interaction.response.edit_message(embed=embed, attachments=[file], view=None)
                 self.stop()
@@ -425,7 +414,7 @@ class RPSPlayView(discord.ui.View):
                     return
                 session.next_round()
                 await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
-            else:  # draw の場合もembed更新が必要
+            else:
                 await interaction.response.edit_message(embed=embed, attachments=[file], view=self)
 
         except Exception as e:
