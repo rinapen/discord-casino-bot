@@ -1,7 +1,3 @@
-"""
-データベース接続とコレクション管理モジュール
-MongoDBとの接続を一元管理し、型安全なデータベース操作を提供します
-"""
 import datetime
 from datetime import timedelta
 from typing import Optional, Any
@@ -12,15 +8,11 @@ from pymongo.database import Database
 
 import config
 
-# ========================================
-# データベース接続（シングルトン）
-# ========================================
 _client: Optional[pymongo.MongoClient] = None
 _db: Optional[Database] = None
 
 
 def get_client() -> pymongo.MongoClient:
-    """MongoDBクライアントのシングルトンインスタンスを取得"""
     global _client
     if _client is None:
         _client = pymongo.MongoClient(config.MONGO_URI)
@@ -28,22 +20,14 @@ def get_client() -> pymongo.MongoClient:
 
 
 def get_database() -> Database:
-    """データベースインスタンスを取得"""
     global _db
     if _db is None:
         _db = get_client()[config.DB_NAME]
     return _db
 
-
-# ========================================
-# コレクション定義
-# ========================================
 def get_collection(collection_name: str) -> Collection:
-    """指定されたコレクションを取得"""
     return get_database()[collection_name]
 
-
-# メインコレクション
 tokens_collection = get_collection(config.TOKENS_COLLECTION)
 blacklist_collection = get_collection(config.BLACKLIST_COLLECTION)
 financial_transactions_collection = get_collection(config.FINANCIAL_TRANSACTIONS_COLLECTION)
@@ -54,7 +38,6 @@ models_collection = get_collection(config.MODELS_COLLECTION)
 bet_history_collection = get_collection(config.BET_HISTORY_COLLECTION)
 bot_state_collection = get_collection(config.BOT_STATE_COLLECTION)
 
-# 追加コレクション
 payin_settings_collection = get_collection("payin_settings")
 invited_users_collection = get_collection("invited_users")
 invites_collection = get_collection("invites")
@@ -67,11 +50,7 @@ carry_over_points_collection = get_collection("carry_over_points")
 accounts_collection = get_collection("accounts")
 exchanged_accounts_collection = get_collection("exchanged_accounts")
 
-# ========================================
-# Provably Fair関連
-# ========================================
 def load_pf_params(user_id: int) -> tuple[Optional[str], int]:
-    """ユーザーのProvably Fairパラメータを読み込む"""
     doc = pf_collection.find_one({"user_id": user_id})
     if doc:
         return doc.get("client_seed"), doc.get("nonce", 0)
@@ -79,7 +58,6 @@ def load_pf_params(user_id: int) -> tuple[Optional[str], int]:
 
 
 def save_pf_params(user_id: int, client_seed: str, server_seed: str, nonce: int) -> None:
-    """ユーザーのProvably Fairパラメータを保存"""
     pf_collection.update_one(
         {"user_id": user_id},
         {
@@ -92,86 +70,18 @@ def save_pf_params(user_id: int, client_seed: str, server_seed: str, nonce: int)
         upsert=True
     )
 
-
-# ========================================
-# ブラックリスト管理
-# ========================================
-def is_blacklisted(user_id: int) -> bool:
-    """ユーザーがブラックリストに登録されているか確認"""
-    return blacklist_collection.find_one({"user_id": user_id}) is not None
-
-
-# ========================================
-# トークン管理
-# ========================================
-def get_tokens() -> dict[str, Any]:
-    """PayPayトークンを取得"""
-    return tokens_collection.find_one({}) or {}
-
-
-def save_tokens(access_token: str, refresh_token: str, device_uuid: str) -> None:
-    """PayPayトークンを保存"""
-    tokens_collection.update_one(
-        {},
-        {
-            "$set": {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "device_uuid": device_uuid
-            }
-        },
-        upsert=True
-    )
-
-
-# ========================================
-# ユーザー残高管理
-# ========================================
 def get_user_balance(user_id: int) -> Optional[int]:
-    """ユーザーのPNC残高を取得"""
+    """残高を取得"""
     user = users_collection.find_one({"user_id": user_id})
     return user["balance"] if user else None
 
 
 def update_user_balance(user_id: int, amount: int) -> None:
-    """ユーザーのPNC残高を更新（増減）"""
     users_collection.update_one(
         {"user_id": user_id},
         {"$inc": {"balance": amount}},
         upsert=True
     )
-
-# ========================================
-# ユーザーストリーク管理
-# ========================================
-def update_user_streak(user_id: int, game_type: str, is_win: bool) -> None:
-    """勝敗の連勝・連敗データを更新"""
-    user_data = users_collection.find_one({"user_id": user_id})
-
-    if not user_data:
-        users_collection.insert_one({
-            "user_id": user_id,
-            "streaks": {game_type: {"win_streak": 0, "lose_streak": 0}}
-        })
-        user_data = users_collection.find_one({"user_id": user_id})
-
-    streak_data = user_data.get("streaks", {}).get(game_type, {"win_streak": 0, "lose_streak": 0})
-    win_streak = streak_data.get("win_streak", 0)
-    lose_streak = streak_data.get("lose_streak", 0)
-
-    if is_win:
-        win_streak += 1
-        lose_streak = 0
-    else:
-        lose_streak += 1
-        win_streak = 0
-
-    users_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {f"streaks.{game_type}.win_streak": win_streak, f"streaks.{game_type}.lose_streak": lose_streak}},
-        upsert=True
-    )
-
 
 def get_user_streaks(user_id: int, game_type: str) -> tuple[int, int]:
     """ゲームタイプごとのユーザーの連勝・連敗記録を取得"""
@@ -183,28 +93,6 @@ def get_user_streaks(user_id: int, game_type: str) -> tuple[int, int]:
     game_streaks = user.get("streaks", {}).get(game_type, {})
     return game_streaks.get("win_streak", 0), game_streaks.get("lose_streak", 0)
 
-
-# ========================================
-# ベット履歴管理
-# ========================================
-def update_bet_history(user_id: int, game_type: str, amount: int, is_win: bool) -> None:
-    """ユーザーのベット履歴をデータベースに記録"""
-    bet_entry = {
-        "amount": amount,
-        "is_win": bool(is_win),
-        "timestamp": datetime.datetime.now()
-    }
-
-    bet_history_collection.update_one(
-        {"user_id": user_id},
-        {"$push": {f"bet_history.{game_type}.bets": bet_entry}},
-        upsert=True
-    )
-
-
-# ========================================
-# ユーザー登録
-# ========================================
 def register_user(user_id: int, sender_external_id: str) -> None:
     """新規ユーザーを登録"""
     users_collection.update_one(
@@ -216,15 +104,11 @@ def register_user(user_id: int, sender_external_id: str) -> None:
         upsert=True
     )
 
-# ========================================
-# トランザクション管理
-# ========================================
 def get_user_transactions(
     user_id: int,
     game_type: Optional[str] = None,
     days: Optional[int] = None
 ) -> list[dict[str, Any]]:
-    """指定ユーザーの金銭取引履歴を取得（payin、payout、exchangeのみ）"""
     doc = financial_transactions_collection.find_one({"user_id": user_id})
 
     if not doc or "transactions" not in doc:
@@ -241,12 +125,7 @@ def get_user_transactions(
 
     return transactions
 
-
-# ========================================
-# ボット状態管理
-# ========================================
 async def save_account_panel_message_id(message_id: int) -> None:
-    """アカウントパネルメッセージIDを保存"""
     bot_state_collection.update_one(
         {"_id": "account_panel"},
         {"$set": {"message_id": message_id}},
@@ -255,90 +134,15 @@ async def save_account_panel_message_id(message_id: int) -> None:
 
 
 async def get_account_panel_message_id() -> Optional[int]:
-    """アカウントパネルメッセージIDを取得"""
     doc = bot_state_collection.find_one({"_id": "account_panel"})
     return doc["message_id"] if doc and "message_id" in doc else None
 
-
-# ========================================
-# ユーザー一覧取得
-# ========================================
 def get_all_user_balances() -> list[tuple[int, int]]:
     """全ユーザーのuser_idと残高を取得する"""
     cursor = users_collection.find({}, {"user_id": 1, "balance": 1})
     return [(doc["user_id"], doc.get("balance", 0)) for doc in cursor]
 
-
-# ========================================
-# 招待管理
-# ========================================
-def get_user_invite(user_id: int) -> Optional[dict[str, Any]]:
-    """ユーザーの招待情報を取得"""
-    return invites_collection.find_one({"user_id": user_id})
-
-
-def save_user_invite(user_id: int, url: str) -> None:
-    """ユーザーの招待URLを保存"""
-    invites_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"invite_url": url}},
-        upsert=True
-    )
-
-
-def log_invited_user(invited_id: int, inviter_id: int, invite_code: str) -> None:
-    """初参加ユーザーの招待ログを保存する"""
-    invited_users_collection.insert_one({
-        "invited_id": invited_id,
-        "inviter_id": inviter_id,
-        "invite_code": invite_code,
-        "timestamp": datetime.datetime.utcnow()
-    })
-
-
-def get_invited_users(inviter_id: int) -> list[dict[str, Any]]:
-    """招待したユーザー一覧を取得"""
-    return list(invited_users_collection.find({"inviter_id": inviter_id}).sort("timestamp", -1))
-
-
-def get_unredeemed_users(inviter_id: int) -> list[dict[str, Any]]:
-    """未報酬の招待ユーザーを取得"""
-    invited = invited_users_collection.find({"inviter_id": inviter_id})
-    redeemed_ids = set(x["invited_id"] for x in invite_redeem_collection.find({"inviter_id": inviter_id}))
-    return [doc for doc in invited if doc["invited_id"] not in redeemed_ids]
-
-
-def mark_users_as_redeemed(inviter_id: int, invited_ids: list[int]) -> None:
-    """招待ユーザーを報酬受領済みとしてマーク"""
-    for invited_id in invited_ids:
-        invite_redeem_collection.insert_one({
-            "inviter_id": inviter_id,
-            "invited_id": invited_id
-        })
-
-
-def has_already_been_invited(user_id: int) -> bool:
-    """ユーザーが過去に一度でも招待されているかチェック"""
-    return invited_users_collection.find_one({"invited_id": user_id}) is not None
-
-
-def mark_user_as_invited(user_id: int) -> None:
-    """ユーザーを招待済みとしてマーク"""
-    invited_users_collection.insert_one({"user_id": user_id})
-
-
-# ========================================
-# 設定管理
-# ========================================
-def is_no_fee_mode_enabled() -> bool:
-    """手数料無料モードが有効かチェック"""
-    config_doc = payin_settings_collection.find_one({"_id": "conversion_rate"})
-    return config_doc and config_doc.get("no_fee_mode", False)
-
-
-# ========================================
-# カジノテーブル管理
-# ========================================
+# カジノテーブル
 def save_casino_table(
     channel_id: int,
     category_id: int,
@@ -346,16 +150,6 @@ def save_casino_table(
     channel_name: str,
     category_name: str
 ) -> None:
-    """
-    カジノテーブル情報をデータベースに保存
-    
-    Args:
-        channel_id: チャンネルID
-        category_id: カテゴリID
-        table_number: テーブル番号
-        channel_name: チャンネル名
-        category_name: カテゴリ名
-    """
     casino_tables_collection.insert_one({
         "channel_id": channel_id,
         "category_id": category_id,
@@ -367,222 +161,17 @@ def save_casino_table(
 
 
 def get_all_casino_tables() -> list[dict[str, Any]]:
-    """
-    全カジノテーブル情報を取得
-    
-    Returns:
-        テーブル情報のリスト
-    """
-    return list(casino_tables_collection.find({}))
+    return list[dict[str, Any]](casino_tables_collection.find({}))
 
 
 def delete_casino_table(channel_id: int) -> None:
-    """
-    カジノテーブル情報をデータベースから削除
-    
-    Args:
-        channel_id: チャンネルID
-    """
     casino_tables_collection.delete_one({"channel_id": channel_id})
 
 
 def clear_all_casino_tables() -> int:
-    """
-    全カジノテーブル情報をデータベースから削除
-    
-    Returns:
-        削除された件数
-    """
     result = casino_tables_collection.delete_many({})
     return result.deleted_count
 
 
 def get_casino_table_count() -> int:
-    """
-    登録されているカジノテーブルの総数を取得
-    
-    Returns:
-        テーブル数
-    """
     return casino_tables_collection.count_documents({})
-
-
-# ========================================
-# 景品ポケット管理
-# ========================================
-def get_prize_pocket(user_id: int) -> Optional[dict[str, Any]]:
-    """
-    ユーザーの景品ポケット情報を取得
-    
-    Args:
-        user_id: ユーザーID
-    
-    Returns:
-        景品ポケット情報 {"large": 個数, "medium": 個数, "small": 個数, "accounts": 個数}
-    """
-    pocket = prize_pockets_collection.find_one({"user_id": user_id})
-    if pocket:
-        return {
-            "large": pocket.get("large", 0),
-            "medium": pocket.get("medium", 0),
-            "small": pocket.get("small", 0),
-            "accounts": pocket.get("accounts", 0)
-        }
-    return {"large": 0, "medium": 0, "small": 0, "accounts": 0}
-
-
-def add_prizes_to_pocket(
-    user_id: int,
-    large: int = 0,
-    medium: int = 0,
-    small: int = 0,
-    accounts: int = 0
-) -> None:
-    """
-    ユーザーの景品ポケットに景品を追加
-    
-    Args:
-        user_id: ユーザーID
-        large: 大景品の個数
-        medium: 中景品の個数
-        small: 小景品の個数
-        accounts: アカウント交換券の個数
-    """
-    prize_pockets_collection.update_one(
-        {"user_id": user_id},
-        {
-            "$inc": {
-                "large": large,
-                "medium": medium,
-                "small": small,
-                "accounts": accounts
-            }
-        },
-        upsert=True
-    )
-
-
-def clear_prize_pocket(user_id: int) -> dict[str, Any]:
-    """
-    ユーザーの景品ポケットをクリア
-    
-    Args:
-        user_id: ユーザーID
-    
-    Returns:
-        dict: クリア前の景品情報
-    """
-    pocket = prize_pockets_collection.find_one({"user_id": user_id})
-    prize_pockets_collection.delete_one({"user_id": user_id})
-    return pocket if pocket else {}
-
-
-# ========================================
-# 繰越ポイント管理
-# ========================================
-def get_carry_over_points(user_id: int) -> int:
-    """
-    ユーザーの繰越ポイントを取得
-    
-    Args:
-        user_id: ユーザーID
-    
-    Returns:
-        int: 繰越ポイント（PNC）
-    """
-    doc = carry_over_points_collection.find_one({"user_id": user_id})
-    return doc.get("points", 0) if doc else 0
-
-
-def add_carry_over_points(user_id: int, points: int) -> None:
-    """
-    ユーザーの繰越ポイントを追加
-    
-    Args:
-        user_id: ユーザーID
-        points: 追加するポイント（PNC）
-    """
-    carry_over_points_collection.update_one(
-        {"user_id": user_id},
-        {"$inc": {"points": points}},
-        upsert=True
-    )
-
-
-def clear_carry_over_points(user_id: int) -> int:
-    """
-    ユーザーの繰越ポイントをクリアして返す
-    
-    Args:
-        user_id: ユーザーID
-    
-    Returns:
-        int: クリア前のポイント
-    """
-    doc = carry_over_points_collection.find_one({"user_id": user_id})
-    points = doc.get("points", 0) if doc else 0
-    
-    if points > 0:
-        carry_over_points_collection.delete_one({"user_id": user_id})
-    
-    return points
-
-
-# ========================================
-# アカウント交換管理
-# ========================================
-def get_random_unused_account(count: int = 1) -> list[dict[str, Any]]:
-    """
-    未使用のアカウントをランダムに取得
-    
-    Args:
-        count: 取得するアカウント数
-    
-    Returns:
-        list[dict]: アカウント情報のリスト [{"_id": ..., "email": ..., "password": ...}]
-    """
-    # 既に交換済みのアカウントIDを取得
-    exchanged_ids = set(
-        doc["account_id"] for doc in exchanged_accounts_collection.find({})
-    )
-    
-    # 未使用のアカウントを取得
-    available_accounts = list(
-        accounts_collection.find({"_id": {"$nin": list(exchanged_ids)}})
-    )
-    
-    if not available_accounts:
-        return []
-    
-    # ランダムにシャッフルして必要数取得
-    import random
-    random.shuffle(available_accounts)
-    return available_accounts[:min(count, len(available_accounts))]
-
-
-def mark_accounts_as_exchanged(account_ids: list, user_id: int) -> None:
-    """
-    アカウントを交換済みとしてマーク
-    
-    Args:
-        account_ids: アカウントIDのリスト（ObjectId）
-        user_id: 交換したユーザーのID
-    """
-    for account_id in account_ids:
-        exchanged_accounts_collection.insert_one({
-            "account_id": account_id,
-            "user_id": user_id,
-            "exchanged_at": datetime.datetime.now()
-        })
-
-
-def get_available_account_count() -> int:
-    """
-    利用可能なアカウント数を取得
-    
-    Returns:
-        int: 未使用アカウント数
-    """
-    total_accounts = accounts_collection.count_documents({})
-    exchanged_count = exchanged_accounts_collection.count_documents({})
-    return total_accounts - exchanged_count
