@@ -12,9 +12,9 @@ from utils.embed_factory import EmbedFactory
 
 from ui.game.dice import ongoing_games
 from ui.game.dice import ContinueButton
-from config import DICE_FOLDER, CURRENCY_NAME
+from config import DICE_FOLDER, CURRENCY_NAME, MIN_BET
 
-async def on_dice_command(message):
+async def on_dice_command(message: discord.Message) -> None:
     try:
         args = message.content.strip().split()
         if len(args) != 2 or not args[1].isdigit():
@@ -27,7 +27,7 @@ async def on_dice_command(message):
             return await message.channel.send(embed=embed)
 
         bet = int(args[1])
-        min_bet = 50
+        min_bet = MIN_BET["dice"]
         if bet < min_bet:
             embed = EmbedFactory.bet_too_low(min_bet=min_bet)
             embed.set_author(

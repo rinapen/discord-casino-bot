@@ -6,15 +6,16 @@ import secrets
 import aiohttp
 
 from database.db import get_user_balance, update_user_balance, load_pf_params, save_pf_params
+
 from utils.embed import create_embed
+from utils.embed_factory import EmbedFactory
 from utils.emojis import PNC_EMOJI_STR
 from utils.color import BLACKJACK_COLOR
-from utils.embed_factory import EmbedFactory
 
 from ui.game.blackjack import BlackjackGame, BlackjackView, blackjack_games
-from config import CURRENCY_NAME
+from config import CURRENCY_NAME, MIN_BET
 
-async def on_blackjack_command(message: discord.Message):
+async def on_blackjack_command(message: discord.Message) -> None:
     try:
         args = message.content.strip().split()
         if len(args) != 2 or not args[1].isdigit():
@@ -25,7 +26,7 @@ async def on_blackjack_command(message: discord.Message):
         bet = int(args[1])
         user = message.author
         user_id = user.id
-        min_bet = 100
+        min_bet = MIN_BET["blackjack"]
 
         if bet < min_bet:
             embed = EmbedFactory.bet_too_low(min_bet=min_bet)

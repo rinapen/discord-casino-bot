@@ -4,9 +4,7 @@ from database.db import get_user_balance
 from utils.emojis import PNC_EMOJI_STR
 from utils.embed_factory import EmbedFactory
 from ui.game.flip import CoinFlipView
-from config import THUMBNAIL_URL, FLIP_GIF_URL, CURRENCY_NAME
-
-MIN_BET = 50
+from config import MIN_BET, THUMBNAIL_URL, FLIP_GIF_URL, CURRENCY_NAME
 
 async def on_coinflip_command(message: discord.Message) -> None:
     try:
@@ -18,14 +16,13 @@ async def on_coinflip_command(message: discord.Message) -> None:
         )
         await message.channel.send(embed=embed)
         return
-    
-    # 最小ベット額の確認
-    if bet < MIN_BET:
+
+    min_bet = MIN_BET["flip"]    
+    if bet < min_bet:
         embed = EmbedFactory.bet_too_low(min_bet=MIN_BET)
         await message.channel.send(embed=embed)
         return
     
-    # ユーザー残高の確認
     balance = get_user_balance(message.author.id)
     if balance is None:
         embed = EmbedFactory.not_registered()
@@ -37,16 +34,14 @@ async def on_coinflip_command(message: discord.Message) -> None:
         await message.channel.send(embed=embed)
         return
     
-    # ゲームEmbed作成
     embed = discord.Embed(
         title=f"{CURRENCY_NAME}フリップ",
-        description=f"**ベット額**\n### {PNC_EMOJI_STR}`{bet}`",
+        description=f"**掛け金**\n### {PNC_EMOJI_STR}`{bet}`",
         color=0x393a41
     )
     embed.set_author(name=f"{message.author.name}", icon_url=message.author.display_avatar.url)
     embed.set_thumbnail(url=THUMBNAIL_URL)
     embed.set_image(url=FLIP_GIF_URL)
 
-    # ゲームビューを添付して送信
     view = CoinFlipView(message.author, bet)
     await message.channel.send(embed=embed, view=view)
