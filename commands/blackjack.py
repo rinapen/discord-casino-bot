@@ -16,15 +16,13 @@ from config import CURRENCY_NAME
 
 async def on_blackjack_command(message: discord.Message):
     try:
-        pattern = r"\?bj\s+(\d+)"
-        match = re.match(pattern, message.content)
-
-        if not match:
+        args = message.content.strip().split()
+        if len(args) != 2 or not args[1].isdigit():
             embed = create_embed("", "`?bj <掛け金>`の形式で入力してください。", discord.Color.red())
             await message.channel.send(embed=embed)
             return
 
-        bet = int(match.group(1))
+        bet = int(args[1])
         user = message.author
         user_id = user.id
         min_bet = 100
