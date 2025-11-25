@@ -1,7 +1,3 @@
-"""
-コインフリップコマンド
-50%の確率で勝敗が決まるシンプルなギャンブルゲーム
-"""
 import discord
 
 from database.db import get_user_balance
@@ -10,25 +6,14 @@ from utils.embed_factory import EmbedFactory
 from ui.game.flip import CoinFlipView
 from config import THUMBNAIL_URL, FLIP_GIF_URL, CURRENCY_NAME
 
-# ========================================
-# 定数
-# ========================================
 MIN_BET = 50
 
-
 async def on_coinflip_command(message: discord.Message) -> None:
-    """
-    コインフリップコマンドハンドラー
-    
-    Args:
-        message: Discordメッセージオブジェクト
-    """
-    # ベット額の解析
     try:
         bet = int(message.content.split()[1])
     except (IndexError, ValueError):
         embed = discord.Embed(
-            description="`?フリップ ベット額`の形式で入力してください。",
+            description="`?フリップ <掛け金>`の形式で入力してください。",
             color=discord.Color.red()
         )
         await message.channel.send(embed=embed)
