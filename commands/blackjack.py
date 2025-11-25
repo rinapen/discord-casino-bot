@@ -58,7 +58,7 @@ async def on_blackjack_command(message: discord.Message):
 
         save_pf_params(user_id, client_seed, server_seed, nonce + 1)
 
-        await message.channel.send(f"🔐 サーバーシードハッシュ: `{game.pf.server_seed_hash}`")
+        await message.channel.send(f"🔐 hash: `{game.pf.server_seed_hash}`")
 
         async with message.channel.typing():
             async with aiohttp.ClientSession() as session:
@@ -82,5 +82,5 @@ async def on_blackjack_command(message: discord.Message):
 
     except Exception as e:
         print(f"[ERROR] on_blackjack_command: {e}")
-        embed = create_embed("エラー", "⚠ ゲーム開始中にエラーが発生しました。", discord.Color.red())
+        embed = create_embed("エラー", "ゲーム中にエラーが発生しました。", discord.Color.red())
         await message.channel.send(embed=embed)
