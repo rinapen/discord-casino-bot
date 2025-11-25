@@ -59,7 +59,7 @@ async def on_blackjack_command(message: discord.Message) -> None:
 
         save_pf_params(user_id, client_seed, server_seed, nonce + 1)
 
-        await message.channel.send(f"🔐 hash: `{game.pf.server_seed_hash}`")
+        await message.channel.send(f"[🔐] hash: `{game.pf.server_seed_hash}`")
 
         async with message.channel.typing():
             async with aiohttp.ClientSession() as session:
