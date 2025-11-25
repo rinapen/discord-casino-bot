@@ -1,3 +1,6 @@
+"""
+アカウントパネル管理モジュール
+"""
 import discord
 from discord.errors import NotFound
 
@@ -8,6 +11,7 @@ from database.db import get_account_panel_message_id, save_account_panel_message
 from commands.account import AccountView
 
 async def setup_account_panel():
+    """アカウントパネルのセットアップ"""
     try:
         channel = await bot.fetch_channel(int(config.ACCOUNT_CHANNEL_ID))
         if not channel:
@@ -31,8 +35,8 @@ async def setup_account_panel():
             description="### 以下のボタンから登録、入金を行えます。",
             color=discord.Color.blurple()
         )
-        embed.add_field(name="登録", value="初めての方は、こちらからアカウントを紐付けてください。", inline=False)
-        embed.add_field(name="入金", value="紐付け済みの方は、こちらから入金してください。", inline=False)
+        embed.add_field(name="登録", value="初めての方は、こちらからアカウントを登録してください。", inline=False)
+        embed.add_field(name="入金", value="登録済みの方は、こちらから入金してください。", inline=False)
 
         new_msg = await channel.send(view=AccountView())
         await save_account_panel_message_id(new_msg.id)

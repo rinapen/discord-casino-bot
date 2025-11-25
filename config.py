@@ -69,7 +69,6 @@ MIN_BET: Final[dict[str, int]] = {
     "flip": 50,
     "mines": 100,
     "rps": 100,
-    "hitandblow": 100,
 }
 
 DICE_FOLDER: Final[str] = "assets/dice"

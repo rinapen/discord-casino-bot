@@ -1,6 +1,6 @@
 """
 ログ管理モジュール
-カジノゲームとPayPayトランザクションのログ機能を提供します
+カジノゲームのログ機能を提供します
 """
 import datetime
 import os
@@ -65,72 +65,6 @@ async def send_casino_log(
     except Exception as e:
         print(f"[ERROR] Failed to send casino log: {e}")
 
-async def send_paypay_log(
-    user: discord.User,
-    amount: float,
-    fee: float,
-    net_amount: float,
-    deposit_info,
-    is_register: bool = False
-) -> None:
-    """
-    PayPay入金ログをログチャンネルに送信
-    
-    Args:
-        user: Discordユーザー
-        amount: 入金額
-        fee: 手数料
-        net_amount: 純入金額
-        deposit_info: PayPay入金情報
-        is_register: 新規登録かどうか
-    """
-    try:
-        if not config.PAYIN_LOG_CHANNEL_ID:
-            print("[WARN] PAYIN_LOG_CHANNEL_ID is not set")
-            return
-            
-        channel = bot.get_channel(int(config.PAYIN_LOG_CHANNEL_ID))
-        if not channel:
-            raise ValueError(f"ログチャンネルID {config.PAYIN_LOG_CHANNEL_ID} が見つかりません。")
-
-        title = "登録完了" if is_register else "入金完了"
-        embed = discord.Embed(title=title, color=discord.Color.green())
-        embed.set_author(name="PayPay", icon_url=config.PAYPAY_ICON_URL)
-        embed.add_field(name="ユーザー", value=f"{user.mention} (`{user.id}`)", inline=False)
-        embed.add_field(name="入金額", value=f"`¥{int(amount):,}`", inline=False)
-        embed.add_field(name="手数料", value=f"`¥{int(fee):,}`", inline=False)
-        embed.add_field(name="残高への反映", value=f"{PNC_EMOJI_STR}`{int(net_amount):,}`", inline=False)
-        embed.add_field(name="決済番号", value=f"`{deposit_info.order_id}`", inline=False)
-        embed.set_footer(text=f"{deposit_info.sender_name} 様", icon_url=deposit_info.sender_icon)
-
-        await channel.send(embed=embed)
-
-    except Exception as e:
-        print(f"[ERROR] send_paypay_log: {e}")
-        # エラー通知の送信（環境変数で設定されている場合のみ）
-        err_msg = f"❗️ send_paypay_log エラー({'register' if is_register else 'payin'}): ```{e}``` ユーザー: {user.id}, 金額: {amount}"
-        
-        # エラーログチャンネルが設定されている場合
-        error_log_channel_id = os.getenv("ERROR_LOG_CHANNEL_ID")
-        if error_log_channel_id:
-            try:
-                err_ct = bot.get_channel(int(error_log_channel_id))
-                if err_ct:
-                    await err_ct.send(err_msg)
-            except Exception:
-                pass
-        
-        # オーナーが設定されている場合
-        owner_user_id = os.getenv("OWNER_USER_ID")
-        if owner_user_id:
-            try:
-                owner = bot.get_user(int(owner_user_id))
-                if owner:
-                    await owner.send(err_msg)
-            except Exception:
-                pass
-
-
 def log_financial_transaction(
     user_id: int,
     transaction_type: str,
@@ -138,7 +72,7 @@ def log_financial_transaction(
     net_amount: int = None
 ) -> None:
     """
-    金銭取引をログとして記録（payin、payout、exchangeのみ）
+    金銭取引をログとして記録
     
     Args:
         user_id: ユーザーID
@@ -146,7 +80,6 @@ def log_financial_transaction(
         amount: 取引額
         net_amount: 純額（手数料差し引き後）。Noneの場合はamountと同じ
     """
-    # 金銭取引のみを許可
     if transaction_type not in ["payin", "payout", "exchange"]:
         print(f"[WARN] log_financial_transaction: 無効なトランザクションタイプ '{transaction_type}' はスキップされました")
         return
@@ -168,7 +101,6 @@ def log_financial_transaction(
     )
 
 
-# 後方互換性のためのエイリアス（ゲームログは記録しない）
 def log_transaction(user_id: int, type: str, amount: int, payout: int) -> None:
     """
     レガシー関数（後方互換性）
@@ -176,7 +108,6 @@ def log_transaction(user_id: int, type: str, amount: int, payout: int) -> None:
     """
     if type in ["payin", "payout"]:
         log_financial_transaction(user_id, type, amount, payout)
-    # ゲーム関連（blackjack, flip, dice等）は何もしない
 
 
 async def send_exchange_log(

@@ -7,19 +7,12 @@ class EmbedFactory:
     def already_registered():
         return create_embed("登録済みです", "あなたはすでにアカウントを紐づけています。", discord.Color.red())
 
-    @staticmethod
-    def registration_prompt(amount: int):
-        return create_embed(
-            "登録受付け",
-            f"### **20秒以内に**{amount}**円のPayPayリンクを送信してください。**",
-            discord.Color.orange()
-        )
     
     @staticmethod
     def require_registration_prompt():
         return create_embed(
             "",
-            f"あなたはアカウントを紐付けていません。<#{ACCOUNT_CHANNEL_ID}>のパネルから登録してください。",
+            f"あなたはアカウントを登録していません。<#{ACCOUNT_CHANNEL_ID}>のパネルから登録してください。",
             discord.Color.red()
         )
     

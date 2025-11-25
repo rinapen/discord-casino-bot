@@ -1,7 +1,3 @@
-"""
-サーバー情報パネルUI
-カテゴリ別の情報表示とナビゲーションシステム
-"""
 import os
 import discord
 from discord.ui import Button, Select, View
@@ -10,13 +6,8 @@ import config
 from utils.emojis import TIP1_EMOJI, TIP2_EMOJI, TIP3_EMOJI, TIP4_EMOJI
 from utils.color import BASE_COLOR_CODE
 
-# 画像ディレクトリ
 INFO_IMAGE_DIR = "assets/info"
 
-
-# ========================================
-# 情報データ定義
-# ========================================
 SERVER_INFO = {
     "利用規約": {
         "title": "利用規約",

@@ -47,7 +47,7 @@ def create_mines_embed(game, reveal_all=False, result=None, payout=None):
     )
     embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1219916908485283880/1386292653318209647/ChatGPT_Image_2025622_19_31_53.png?ex=68592d24&is=6857dba4&hm=b8949b8e92394ebf1d2ef1f159fa408153e462c6c519eead391d8bfc52fb6740&")
     if not (result and payout is not None):
-        embed.add_field(name="**Bet数**", value=f"{PNC_EMOJI_STR}`{game.bet}`", inline=False)
+        embed.add_field(name="**掛け金**", value=f"{PNC_EMOJI_STR}`{game.bet}`", inline=False)
         embed.add_field(name="**Mines**", value=f"`{game.mine_count}`", inline=True)
         embed.add_field(name="**Gems**", value=f"`{remaining_gems}`", inline=True)
         embed.add_field(name=f"**利益 ({game.payout_multiplier:.2f}×)**", value=f"{PNC_EMOJI_STR}`{round(displayed_profit)}`", inline=False)
