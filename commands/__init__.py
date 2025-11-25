@@ -4,14 +4,10 @@ import discord
 
 from .balance import on_balance_command
 from .transfer import on_transfer_command
-from .pocket import on_pocket_command
-from .redeem_account import on_redeem_account_command
-from .purchase import on_purchase_command
 from .mines import on_mines_command
 from .flip import on_coinflip_command
 from .blackjack import on_blackjack_command
 from .dice import on_dice_command
-from .hitandblow import on_hitandblow_command
 from .rps import on_rps_command
 
 TEXT_COMMANDS: dict[str, Callable[[discord.Message], Awaitable[None]]] = {
